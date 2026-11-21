@@ -9,6 +9,7 @@ namespace TEN::Input
 	extern const BindingProfile DEFAULT_KEYBOARD_MOUSE_BINDING_PROFILE;
 	extern const BindingProfile DEFAULT_GAMEPAD_BINDING_PROFILE;
 	extern const BindingProfile RAW_EVENT_BINDING_PROFILE;
+	extern const BindingProfile DEFAULT_TOUCH_BINDING_PROFILE;
 
 	// TODO: The true ideal solution will be to have the following:
 	//	KeyboardMouseDefault
@@ -22,6 +23,7 @@ namespace TEN::Input
 		Default,
 		Custom,
 		Raw,
+		Touch,
 
 		Count
 	};

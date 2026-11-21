@@ -3773,6 +3773,7 @@ namespace TEN::Renderer
 		RenderScene(_backBuffer.get(), _gameCamera);
 
 		_graphicsDevice->ClearState();
+		DrawTouchControls();
 		_graphicsDevice->Present(); // 1 0
 	}
 

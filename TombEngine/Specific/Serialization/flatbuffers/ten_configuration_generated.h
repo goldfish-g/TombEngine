@@ -117,6 +117,13 @@ struct ConfigurationT : public flatbuffers::NativeTable {
   int32_t menu_option_looping_mode = 0;
   int32_t last_gamepad_type = 0;
   std::vector<std::unique_ptr<TEN::Serialization::Config::BindingT>> bindings{};
+  bool enable_touch_controls = false;
+  float touch_opacity = 1.0f;
+  float touch_button_scale = 1.0f;
+  float touch_stick_scale = 1.0f;
+  float touch_stick_deadzone = 0.35f;
+  std::vector<std::unique_ptr<TEN::Serialization::Config::BindingT>> touch_bindings{};
+  bool touch_low_res_icons = false;
 };
 
 struct Configuration FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
@@ -151,7 +158,14 @@ struct Configuration FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_MOUSE_SENSITIVITY = 52,
     VT_MENU_OPTION_LOOPING_MODE = 54,
     VT_LAST_GAMEPAD_TYPE = 56,
-    VT_BINDINGS = 58
+    VT_BINDINGS = 58,
+    VT_ENABLE_TOUCH_CONTROLS = 60,
+    VT_TOUCH_OPACITY = 62,
+    VT_TOUCH_BUTTON_SCALE = 64,
+    VT_TOUCH_STICK_SCALE = 66,
+    VT_TOUCH_STICK_DEADZONE = 68,
+    VT_TOUCH_BINDINGS = 70,
+    VT_TOUCH_LOW_RES_ICONS = 72
   };
   int32_t screen_width() const {
     return GetField<int32_t>(VT_SCREEN_WIDTH, 0);
@@ -237,6 +251,27 @@ struct Configuration FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *bindings() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *>(VT_BINDINGS);
   }
+  bool enable_touch_controls() const {
+    return GetField<uint8_t>(VT_ENABLE_TOUCH_CONTROLS, 0) != 0;
+  }
+  float touch_opacity() const {
+    return GetField<float>(VT_TOUCH_OPACITY, 1.0f);
+  }
+  float touch_button_scale() const {
+    return GetField<float>(VT_TOUCH_BUTTON_SCALE, 1.0f);
+  }
+  float touch_stick_scale() const {
+    return GetField<float>(VT_TOUCH_STICK_SCALE, 1.0f);
+  }
+  float touch_stick_deadzone() const {
+    return GetField<float>(VT_TOUCH_STICK_DEADZONE, 0.35f);
+  }
+  const flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *touch_bindings() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *>(VT_TOUCH_BINDINGS);
+  }
+  bool touch_low_res_icons() const {
+    return GetField<uint8_t>(VT_TOUCH_LOW_RES_ICONS, 0) != 0;
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_SCREEN_WIDTH) &&
@@ -270,6 +305,15 @@ struct Configuration FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            VerifyOffset(verifier, VT_BINDINGS) &&
            verifier.VerifyVector(bindings()) &&
            verifier.VerifyVectorOfTables(bindings()) &&
+           VerifyField<uint8_t>(verifier, VT_ENABLE_TOUCH_CONTROLS) &&
+           VerifyField<float>(verifier, VT_TOUCH_OPACITY) &&
+           VerifyField<float>(verifier, VT_TOUCH_BUTTON_SCALE) &&
+           VerifyField<float>(verifier, VT_TOUCH_STICK_SCALE) &&
+           VerifyField<float>(verifier, VT_TOUCH_STICK_DEADZONE) &&
+           VerifyOffset(verifier, VT_TOUCH_BINDINGS) &&
+           verifier.VerifyVector(touch_bindings()) &&
+           verifier.VerifyVectorOfTables(touch_bindings()) &&
+           VerifyField<uint8_t>(verifier, VT_TOUCH_LOW_RES_ICONS) &&
            verifier.EndTable();
   }
   ConfigurationT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -365,6 +409,27 @@ struct ConfigurationBuilder {
   void add_bindings(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>> bindings) {
     fbb_.AddOffset(Configuration::VT_BINDINGS, bindings);
   }
+  void add_enable_touch_controls(bool enable_touch_controls) {
+    fbb_.AddElement<uint8_t>(Configuration::VT_ENABLE_TOUCH_CONTROLS, static_cast<uint8_t>(enable_touch_controls), 0);
+  }
+  void add_touch_opacity(float touch_opacity) {
+    fbb_.AddElement<float>(Configuration::VT_TOUCH_OPACITY, touch_opacity, 1.0f);
+  }
+  void add_touch_button_scale(float touch_button_scale) {
+    fbb_.AddElement<float>(Configuration::VT_TOUCH_BUTTON_SCALE, touch_button_scale, 1.0f);
+  }
+  void add_touch_stick_scale(float touch_stick_scale) {
+    fbb_.AddElement<float>(Configuration::VT_TOUCH_STICK_SCALE, touch_stick_scale, 1.0f);
+  }
+  void add_touch_stick_deadzone(float touch_stick_deadzone) {
+    fbb_.AddElement<float>(Configuration::VT_TOUCH_STICK_DEADZONE, touch_stick_deadzone, 0.35f);
+  }
+  void add_touch_bindings(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>> touch_bindings) {
+    fbb_.AddOffset(Configuration::VT_TOUCH_BINDINGS, touch_bindings);
+  }
+  void add_touch_low_res_icons(bool touch_low_res_icons) {
+    fbb_.AddElement<uint8_t>(Configuration::VT_TOUCH_LOW_RES_ICONS, static_cast<uint8_t>(touch_low_res_icons), 0);
+  }
   explicit ConfigurationBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -405,8 +470,20 @@ inline flatbuffers::Offset<Configuration> CreateConfiguration(
     int32_t mouse_sensitivity = 0,
     int32_t menu_option_looping_mode = 0,
     int32_t last_gamepad_type = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>> bindings = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>> bindings = 0,
+    bool enable_touch_controls = false,
+    float touch_opacity = 1.0f,
+    float touch_button_scale = 1.0f,
+    float touch_stick_scale = 1.0f,
+    float touch_stick_deadzone = 0.35f,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>> touch_bindings = 0,
+    bool touch_low_res_icons = false) {
   ConfigurationBuilder builder_(_fbb);
+  builder_.add_touch_bindings(touch_bindings);
+  builder_.add_touch_stick_deadzone(touch_stick_deadzone);
+  builder_.add_touch_stick_scale(touch_stick_scale);
+  builder_.add_touch_button_scale(touch_button_scale);
+  builder_.add_touch_opacity(touch_opacity);
   builder_.add_bindings(bindings);
   builder_.add_last_gamepad_type(last_gamepad_type);
   builder_.add_menu_option_looping_mode(menu_option_looping_mode);
@@ -422,6 +499,8 @@ inline flatbuffers::Offset<Configuration> CreateConfiguration(
   builder_.add_gamma(gamma);
   builder_.add_screen_height(screen_height);
   builder_.add_screen_width(screen_width);
+  builder_.add_touch_low_res_icons(touch_low_res_icons);
+  builder_.add_enable_touch_controls(enable_touch_controls);
   builder_.add_enable_thumbstick_camera(enable_thumbstick_camera);
   builder_.add_enable_rumble(enable_rumble);
   builder_.add_enable_interaction_highlighter(enable_interaction_highlighter);
@@ -472,9 +551,17 @@ inline flatbuffers::Offset<Configuration> CreateConfigurationDirect(
     int32_t mouse_sensitivity = 0,
     int32_t menu_option_looping_mode = 0,
     int32_t last_gamepad_type = 0,
-    const std::vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *bindings = nullptr) {
+    const std::vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *bindings = nullptr,
+    bool enable_touch_controls = false,
+    float touch_opacity = 1.0f,
+    float touch_button_scale = 1.0f,
+    float touch_stick_scale = 1.0f,
+    float touch_stick_deadzone = 0.35f,
+    const std::vector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> *touch_bindings = nullptr,
+    bool touch_low_res_icons = false) {
   auto adapter_name__ = adapter_name ? _fbb.CreateString(adapter_name) : 0;
   auto bindings__ = bindings ? _fbb.CreateVector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>(*bindings) : 0;
+  auto touch_bindings__ = touch_bindings ? _fbb.CreateVector<flatbuffers::Offset<TEN::Serialization::Config::Binding>>(*touch_bindings) : 0;
   return TEN::Serialization::Config::CreateConfiguration(
       _fbb,
       screen_width,
@@ -504,7 +591,14 @@ inline flatbuffers::Offset<Configuration> CreateConfigurationDirect(
       mouse_sensitivity,
       menu_option_looping_mode,
       last_gamepad_type,
-      bindings__);
+      bindings__,
+      enable_touch_controls,
+      touch_opacity,
+      touch_button_scale,
+      touch_stick_scale,
+      touch_stick_deadzone,
+      touch_bindings__,
+      touch_low_res_icons);
 }
 
 flatbuffers::Offset<Configuration> CreateConfiguration(flatbuffers::FlatBufferBuilder &_fbb, const ConfigurationT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -575,6 +669,13 @@ inline void Configuration::UnPackTo(ConfigurationT *_o, const flatbuffers::resol
   { auto _e = menu_option_looping_mode(); _o->menu_option_looping_mode = _e; }
   { auto _e = last_gamepad_type(); _o->last_gamepad_type = _e; }
   { auto _e = bindings(); if (_e) { _o->bindings.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->bindings[_i] = std::unique_ptr<TEN::Serialization::Config::BindingT>(_e->Get(_i)->UnPack(_resolver)); } } }
+  { auto _e = enable_touch_controls(); _o->enable_touch_controls = _e; }
+  { auto _e = touch_opacity(); _o->touch_opacity = _e; }
+  { auto _e = touch_button_scale(); _o->touch_button_scale = _e; }
+  { auto _e = touch_stick_scale(); _o->touch_stick_scale = _e; }
+  { auto _e = touch_stick_deadzone(); _o->touch_stick_deadzone = _e; }
+  { auto _e = touch_bindings(); if (_e) { _o->touch_bindings.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->touch_bindings[_i] = std::unique_ptr<TEN::Serialization::Config::BindingT>(_e->Get(_i)->UnPack(_resolver)); } } }
+  { auto _e = touch_low_res_icons(); _o->touch_low_res_icons = _e; }
 }
 
 inline flatbuffers::Offset<Configuration> Configuration::Pack(flatbuffers::FlatBufferBuilder &_fbb, const ConfigurationT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -613,6 +714,13 @@ inline flatbuffers::Offset<Configuration> CreateConfiguration(flatbuffers::FlatB
   auto _menu_option_looping_mode = _o->menu_option_looping_mode;
   auto _last_gamepad_type = _o->last_gamepad_type;
   auto _bindings = _fbb.CreateVector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> (_o->bindings.size(), [](size_t i, _VectorArgs *__va) { return CreateBinding(*__va->__fbb, __va->__o->bindings[i].get(), __va->__rehasher); }, &_va );
+  auto _enable_touch_controls = _o->enable_touch_controls;
+  auto _touch_opacity = _o->touch_opacity;
+  auto _touch_button_scale = _o->touch_button_scale;
+  auto _touch_stick_scale = _o->touch_stick_scale;
+  auto _touch_stick_deadzone = _o->touch_stick_deadzone;
+  auto _touch_bindings = _fbb.CreateVector<flatbuffers::Offset<TEN::Serialization::Config::Binding>> (_o->touch_bindings.size(), [](size_t i, _VectorArgs *__va) { return CreateBinding(*__va->__fbb, __va->__o->touch_bindings[i].get(), __va->__rehasher); }, &_va );
+  auto _touch_low_res_icons = _o->touch_low_res_icons;
   return TEN::Serialization::Config::CreateConfiguration(
       _fbb,
       _screen_width,
@@ -642,7 +750,14 @@ inline flatbuffers::Offset<Configuration> CreateConfiguration(flatbuffers::FlatB
       _mouse_sensitivity,
       _menu_option_looping_mode,
       _last_gamepad_type,
-      _bindings);
+      _bindings,
+      _enable_touch_controls,
+      _touch_opacity,
+      _touch_button_scale,
+      _touch_stick_scale,
+      _touch_stick_deadzone,
+      _touch_bindings,
+      _touch_low_res_icons);
 }
 
 inline const TEN::Serialization::Config::Configuration *GetConfiguration(const void *buf) {

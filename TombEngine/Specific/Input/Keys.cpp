@@ -138,6 +138,21 @@ namespace TEN::Input
 		{ MK_AXIS_Y_POS, "Mouse Y+" },
 		{ MK_AXIS_Z_NEG, "Wheel Up" },
 		{ MK_AXIS_Z_POS, "Wheel Down" },
+
+		{ TK_STICK_UP,	 "Touch Up" },
+		{ TK_STICK_DOWN,  "Touch Down" },
+		{ TK_STICK_LEFT,  "Touch Left" },
+		{ TK_STICK_RIGHT, "Touch Right" },
+		{ TK_JUMP,		 "Touch Jump" },
+		{ TK_ACTION,	 "Touch Action" },
+		{ TK_WALK,		 "Touch Walk" },
+		{ TK_LOOK,		 "Touch Look" },
+		{ TK_ROLL,		 "Touch Roll" },
+		{ TK_DRAW,		 "Touch Draw" },
+		{ TK_SPRINT,	 "Touch Sprint" },
+		{ TK_CROUCH,	 "Touch Crouch" },
+		{ TK_INVENTORY,  "Touch Inventory" },
+		{ TK_PAUSE,		 "Touch Pause" },
 	};
 
 	static const auto GAMEPAD_KEY_NAME_MAP = std::unordered_map<int, GamepadKeyNameSet>

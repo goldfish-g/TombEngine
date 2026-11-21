@@ -10,18 +10,22 @@ namespace TEN::Input
 	//
 	//   [ 0 .. SDL_SCANCODE_COUNT )                        keyboard scancodes
 	//   [ KEY_OFFSET_MOUSE   .. KEY_OFFSET_GAMEPAD )       mouse buttons + axes
-	//   [ KEY_OFFSET_GAMEPAD .. KEY_COUNT )                gamepad buttons + axes
+	//   [ KEY_OFFSET_GAMEPAD .. KEY_OFFSET_TOUCH )         gamepad buttons + axes
+	//   [ KEY_OFFSET_TOUCH   .. KEY_COUNT )                on-screen touch controls
 
 	constexpr auto KEYBOARD_KEY_COUNT   = (int)SDL_SCANCODE_COUNT;
 	constexpr auto MOUSE_BUTTON_COUNT   = 8;
 	constexpr auto MOUSE_AXIS_COUNT     = 3; // X, Y, Wheel
 	constexpr auto GAMEPAD_BUTTON_COUNT = (int)SDL_GAMEPAD_BUTTON_COUNT;
 	constexpr auto GAMEPAD_AXIS_COUNT   = (int)SDL_GAMEPAD_AXIS_COUNT;
+	constexpr auto TOUCH_KEY_COUNT      = 14;
 
 	constexpr auto KEY_OFFSET_MOUSE   = KEYBOARD_KEY_COUNT;
 	constexpr auto KEY_OFFSET_GAMEPAD = KEY_OFFSET_MOUSE + MOUSE_BUTTON_COUNT + (MOUSE_AXIS_COUNT * 2);
 
-	constexpr auto KEY_COUNT = KEY_OFFSET_GAMEPAD + GAMEPAD_BUTTON_COUNT + (GAMEPAD_AXIS_COUNT * 2);
+	constexpr auto KEY_OFFSET_TOUCH   = KEY_OFFSET_GAMEPAD + GAMEPAD_BUTTON_COUNT + (GAMEPAD_AXIS_COUNT * 2);
+
+	constexpr auto KEY_COUNT = KEY_OFFSET_TOUCH + TOUCH_KEY_COUNT;
 
 	constexpr auto KEY_UNASSIGNED = -1;
 
@@ -92,6 +96,26 @@ namespace TEN::Input
 		GK_LTRIGGER_POS,
 		GK_RTRIGGER_NEG = KEY_OFFSET_GAMEPAD_AXIS + (int)SDL_GAMEPAD_AXIS_RIGHT_TRIGGER * 2,
 		GK_RTRIGGER_POS
+	};
+
+	// Places on the on-screen touch controls (see TouchControls.h): the stick's four
+	// directions, then one per button, named after the action it has by default.
+	enum TouchKey
+	{
+		TK_STICK_UP = KEY_OFFSET_TOUCH,
+		TK_STICK_DOWN,
+		TK_STICK_LEFT,
+		TK_STICK_RIGHT,
+		TK_JUMP,
+		TK_ACTION,
+		TK_WALK,
+		TK_LOOK,
+		TK_ROLL,
+		TK_DRAW,
+		TK_SPRINT,
+		TK_CROUCH,
+		TK_INVENTORY,
+		TK_PAUSE
 	};
 
 	const std::string& GetKeyName(int keyID);

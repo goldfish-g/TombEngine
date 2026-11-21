@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- In the style of Font Awesome Free 6.7.2 (https://fontawesome.com). -->
+  <g transform="translate(0 0)">
+    <path d="M214 152 H322 A112 112 0 0 1 322 376 H140" fill="none" stroke="#000" stroke-width="116" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M70 152 L214 56 V248 Z" fill="#000" stroke="#000" stroke-width="88" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M214 152 H322 A112 112 0 0 1 322 376 H140" fill="none" stroke="#fff" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M70 152 L214 56 V248 Z" fill="#fff" stroke="#fff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -104,6 +104,29 @@ namespace TEN::Input
 		{ In::Load,           SDL_SCANCODE_F6 }
 	};
 
+	// The on-screen touch controls (see TouchControls.h). As in TRX, the action button
+	// confirms in menus and the jump button goes back.
+	const BindingProfile DEFAULT_TOUCH_BINDING_PROFILE =
+	{
+		{ In::Forward,   TK_STICK_UP },
+		{ In::Back,      TK_STICK_DOWN },
+		{ In::Left,      TK_STICK_LEFT },
+		{ In::Right,     TK_STICK_RIGHT },
+		{ In::Jump,      TK_JUMP },
+		{ In::Action,    TK_ACTION },
+		{ In::Walk,      TK_WALK },
+		{ In::Look,      TK_LOOK },
+		{ In::Roll,      TK_ROLL },
+		{ In::Draw,      TK_DRAW },
+		{ In::Sprint,    TK_SPRINT },
+		{ In::Crouch,    TK_CROUCH },
+		{ In::Inventory, TK_INVENTORY },
+		{ In::Pause,     TK_PAUSE },
+
+		{ In::Select,    TK_ACTION },
+		{ In::Deselect,  TK_JUMP }
+	};
+
 	const BindingProfile RAW_EVENT_BINDING_PROFILE =
 	{
 		{ In::A,            SDL_SCANCODE_A },
@@ -298,6 +321,10 @@ namespace TEN::Input
 				_bindings[profileID] = DEFAULT_KEYBOARD_MOUSE_BINDING_PROFILE;
 				break;
 
+			case BindingProfileID::Touch:
+				_bindings[profileID] = DEFAULT_TOUCH_BINDING_PROFILE;
+				break;
+
 			default:
 				TENLog("Failed to reset defaults for binding profile " + std::to_string((int)profileID) + ".", LogLevel::Warning);
 				return;
@@ -321,7 +348,8 @@ namespace TEN::Input
 		{
 			{ BindingProfileID::Default, DEFAULT_KEYBOARD_MOUSE_BINDING_PROFILE },
 			{ BindingProfileID::Custom,  DEFAULT_KEYBOARD_MOUSE_BINDING_PROFILE },
-			{ BindingProfileID::Raw,     RAW_EVENT_BINDING_PROFILE }
+			{ BindingProfileID::Raw,     RAW_EVENT_BINDING_PROFILE },
+			{ BindingProfileID::Touch,   DEFAULT_TOUCH_BINDING_PROFILE }
 		};
 
 		_conflicts.reserve((int)ActionID::Count);

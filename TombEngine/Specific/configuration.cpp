@@ -92,6 +92,16 @@ static void LoadBinding(int actionId, int keyId)
 	g_Bindings.SetKeyBinding(BindingProfileID::Custom, action, keyId);
 }
 
+static void LoadTouchBinding(int actionId, int keyId)
+{
+	if (actionId < 0 || actionId >= (int)ActionID::Count)
+		return;
+
+	auto action = (ActionID)actionId;
+	g_Configuration.TouchBindings[action] = keyId;
+	g_Bindings.SetKeyBinding(BindingProfileID::Touch, action, keyId);
+}
+
 static bool LoadConfigurationBuffer(const std::vector<unsigned char>& fileData)
 {
 	auto buffer = std::vector<unsigned char>();
@@ -148,6 +158,21 @@ static bool LoadConfigurationBuffer(const std::vector<unsigned char>& fileData)
 			LoadBinding(binding->action_id(), binding->key_id());
 	}
 
+	g_Configuration.EnableTouchControls = config->enable_touch_controls();
+	g_Configuration.TouchOpacity = config->touch_opacity();
+	g_Configuration.TouchButtonScale = config->touch_button_scale();
+	g_Configuration.TouchStickScale = config->touch_stick_scale();
+	g_Configuration.TouchStickDeadzone = config->touch_stick_deadzone();
+	g_Configuration.TouchLowResIcons = config->touch_low_res_icons();
+
+	// Touch bindings over the defaults (all of them once the player changed one; KEY_UNASSIGNED = unbound).
+	g_Bindings.SetDefaultBindingProfile(BindingProfileID::Touch);
+	if (config->touch_bindings() != nullptr)
+	{
+		for (const auto* binding : *config->touch_bindings())
+			LoadTouchBinding(binding->action_id(), binding->key_id());
+	}
+
 	if (g_Configuration.Bindings.empty())
 		g_Configuration.Bindings = g_Bindings.GetBindingProfile(BindingProfileID::Default);
 
@@ -199,6 +224,14 @@ void InitDefaultConfiguration()
 	g_Configuration.LastGamepadType = GamepadType::Xbox;
 	g_Configuration.Bindings = {};
 
+	g_Configuration.EnableTouchControls = false;
+	g_Configuration.TouchOpacity = 1.0f;
+	g_Configuration.TouchButtonScale = 1.0f;
+	g_Configuration.TouchStickScale = 1.0f;
+	g_Configuration.TouchStickDeadzone = 0.35f;
+	g_Configuration.TouchLowResIcons = false;
+	g_Configuration.TouchBindings = {};
+
 	g_Configuration.SupportedScreenResolutions = GetAllSupportedScreenResolutions();
 	g_Configuration.AdapterName = g_Renderer.GetDefaultAdapterName();
 
@@ -239,6 +272,12 @@ static std::vector<unsigned char> BuildConfigurationBuffer()
 
 	auto bindingsOffset = fbb.CreateVector(bindings);
 
+	auto touchBindings = std::vector<flatbuffers::Offset<Binding>>();
+	for (const auto& [action, keyId] : g_Configuration.TouchBindings)
+		touchBindings.push_back(CreateBinding(fbb, (int)action, keyId));
+
+	auto touchBindingsOffset = fbb.CreateVector(touchBindings);
+
 	ConfigurationBuilder builder{ fbb };
 	builder.add_screen_width(g_Configuration.ScreenWidth);
 	builder.add_screen_height(g_Configuration.ScreenHeight);
@@ -268,6 +307,13 @@ static std::vector<unsigned char> BuildConfigurationBuffer()
 	builder.add_menu_option_looping_mode((int)g_Configuration.MenuOptionLoopingMode);
 	builder.add_last_gamepad_type((int)g_Configuration.LastGamepadType);
 	builder.add_bindings(bindingsOffset);
+	builder.add_enable_touch_controls(g_Configuration.EnableTouchControls);
+	builder.add_touch_opacity(g_Configuration.TouchOpacity);
+	builder.add_touch_button_scale(g_Configuration.TouchButtonScale);
+	builder.add_touch_stick_scale(g_Configuration.TouchStickScale);
+	builder.add_touch_stick_deadzone(g_Configuration.TouchStickDeadzone);
+	builder.add_touch_bindings(touchBindingsOffset);
+	builder.add_touch_low_res_icons(g_Configuration.TouchLowResIcons);
 
 	auto config = builder.Finish();
 	FinishConfigurationBuffer(fbb, config);

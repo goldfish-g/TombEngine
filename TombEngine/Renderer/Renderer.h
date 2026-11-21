@@ -39,6 +39,7 @@
 #include "Renderer/Structures/RendererAnimatedTextureSet.h"
 #include "Renderer/Structures/RendererItem.h"
 #include "Renderer/Structures/RendererEffect.h"
+#include "Specific/Input/TouchControls.h"
 #include "Renderer/Structures/RendererLine3D.h"
 #include "Renderer/Structures/RendererTriangle3D.h"
 #include "Renderer/Structures/RendererMesh.h"
@@ -173,6 +174,8 @@ namespace TEN::Renderer
 		std::unique_ptr<ITexture2D> _logo;
 		std::unique_ptr<ITexture2D> _skyTexture;
 		std::unique_ptr<ITexture2D> _whiteTexture;
+		std::unordered_map<unsigned long long, std::pair<std::unique_ptr<ITexture2D>, int>> _touchImages = {}; // Drawings of the touch controls and the frame each last showed.
+		int _touchFrame = 0;
 		RendererSprite _whiteSprite;
 		std::unique_ptr<ITexture2D> _loadingBarBorder;
 		std::unique_ptr<ITexture2D> _loadingBarInner;
@@ -459,6 +462,10 @@ namespace TEN::Renderer
 		void PrepareRipples(RenderView& view);
 		void PrepareUnderwaterBloodParticles(RenderView& view);
 		void DrawFullScreenQuad(ITextureBase* texture, Vector3 color, bool fit = true, float customAspect = 0.0f);
+		void DrawTouchControls();
+		ITexture2D* GetTouchImage(int imageID, int size, float ringWidth);
+		void DrawTouchImage(int imageID, const Vector2& center, float diameter, float ringWidth, float alpha, const Vector2& screenSize);
+		void DrawTouchGlyphLowRes(const TEN::Input::TouchGlyph& glyph, const Vector2& screenSize);
 		void DrawFullScreenSprite(RendererSprite* sprite, DirectX::SimpleMath::Vector3 color, bool fit = true);
 		void PrepareSmokeParticles(RenderView& view);
 		void PrepareSparkParticles(RenderView& view);

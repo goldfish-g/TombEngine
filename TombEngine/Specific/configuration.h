@@ -60,6 +60,15 @@ struct GameConfiguration
 	GamepadType			  LastGamepadType		= GamepadType::Xbox;
 	BindingProfile		  Bindings				= {};
 
+	// Touch controls (see Specific/Input/TouchControls.h); defaults as in TRX.
+	bool				  EnableTouchControls	= false;
+	float				  TouchOpacity			= 1.0f;
+	float				  TouchButtonScale		= 1.0f;
+	float				  TouchStickScale		= 1.0f;
+	float				  TouchStickDeadzone	= 0.35f;
+	bool				  TouchLowResIcons		= false; // TRX's pixel icons instead of sharp ones.
+	BindingProfile		  TouchBindings			= {};
+
 	std::vector<Vector2i>	SupportedScreenResolutions	= {};
 	std::string				AdapterName					= {};
 	std::vector<BassDevice> SupportedSoundDevices				= {};

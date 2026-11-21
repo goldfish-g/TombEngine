@@ -37,6 +37,14 @@ table Configuration {
 	menu_option_looping_mode: int32;
 	last_gamepad_type: int32;
 	bindings: [Binding];
+
+	enable_touch_controls: bool;
+	touch_opacity: float = 1.0;
+	touch_button_scale: float = 1.0;
+	touch_stick_scale: float = 1.0;
+	touch_stick_deadzone: float = 0.35;
+	touch_bindings: [Binding];
+	touch_low_res_icons: bool;
 }
 
 root_type Configuration;

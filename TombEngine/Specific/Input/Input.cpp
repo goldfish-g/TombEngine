@@ -12,6 +12,7 @@
 #include "Sound/sound.h"
 #include "Specific/clock.h"
 #include "Specific/EngineMain.h"
+#include "Specific/Input/TouchControls.h"
 #include "Specific/trutils.h"
 
 using namespace TEN::Gui;
@@ -196,6 +197,10 @@ namespace TEN::Input
 		// Do not snap mouse pointer to the window center when going from/to menus.
 		SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_CENTER, "0");
 
+		// Touches drive the on-screen touch controls, not the mouse (see TouchControls.h).
+		SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+		InitializeTouchControls();
+
 		// Open whatever gamepad is connected at startup. Subsequent connections arrive via
 		// SDL_EVENT_GAMEPAD_ADDED through HandleSDLEvent.
 		OpenFirstGamepad();
@@ -230,6 +235,13 @@ namespace TEN::Input
 		case SDL_EVENT_GAMEPAD_REMOVED:
 			CloseGamepadIfMatches(event.gdevice.which);
 			break;
+
+		case SDL_EVENT_FINGER_DOWN:
+		case SDL_EVENT_FINGER_MOTION:
+		case SDL_EVENT_FINGER_UP:
+		case SDL_EVENT_FINGER_CANCELED:
+			HandleTouchEvent(event);
+			break;
 		}
 	}
 
@@ -244,6 +256,10 @@ namespace TEN::Input
 		return;
 #endif
 		relative = relative || g_Renderer.IsFullScreen();
+
+		// A locked pointer would hold touches at its own position too.
+		if (AreTouchControlsVisible())
+			relative = false;
 
 		if (MouseRelativeMode == relative)
 			return;
@@ -403,6 +419,21 @@ namespace TEN::Input
 
 			// Interpret discrete directional keypresses as analog axis values.
 			SetDiscreteAxisValues(key);
+		}
+	}
+
+	static void ReadTouch()
+	{
+		if (InputLocked)
+			return;
+
+		for (int keyID = KEY_OFFSET_TOUCH; keyID < KEY_COUNT; keyID++)
+		{
+			if (!IsTouchKeyHeld(keyID))
+				continue;
+
+			KeyMap[keyID] = 1.0f;
+			SetDiscreteAxisValues(keyID);
 		}
 	}
 
@@ -596,16 +627,16 @@ namespace TEN::Input
 		switch (actionID)
 		{
 		case In::MenuUp:
-			return std::max({ KeyMap[SDL_SCANCODE_UP], KeyMap[GK_DPAD_UP], KeyMap[GK_LSTICK_Y_NEG] });
+			return std::max({ KeyMap[SDL_SCANCODE_UP], KeyMap[GK_DPAD_UP], KeyMap[GK_LSTICK_Y_NEG], KeyMap[TK_STICK_UP] });
 
 		case In::MenuDown:
-			return std::max({ KeyMap[SDL_SCANCODE_DOWN], KeyMap[GK_DPAD_DOWN], KeyMap[GK_LSTICK_Y_POS] });
+			return std::max({ KeyMap[SDL_SCANCODE_DOWN], KeyMap[GK_DPAD_DOWN], KeyMap[GK_LSTICK_Y_POS], KeyMap[TK_STICK_DOWN] });
 
 		case In::MenuLeft:
-			return std::max({ KeyMap[SDL_SCANCODE_LEFT], KeyMap[GK_DPAD_LEFT], KeyMap[GK_LSTICK_X_NEG] });
+			return std::max({ KeyMap[SDL_SCANCODE_LEFT], KeyMap[GK_DPAD_LEFT], KeyMap[GK_LSTICK_X_NEG], KeyMap[TK_STICK_LEFT] });
 
 		case In::MenuRight:
-			return std::max({ KeyMap[SDL_SCANCODE_RIGHT], KeyMap[GK_DPAD_RIGHT], KeyMap[GK_LSTICK_X_POS] });
+			return std::max({ KeyMap[SDL_SCANCODE_RIGHT], KeyMap[GK_DPAD_RIGHT], KeyMap[GK_LSTICK_X_POS], KeyMap[TK_STICK_RIGHT] });
 
 		default:
 			break;
@@ -747,6 +778,7 @@ namespace TEN::Input
 			ReadKeyboard();
 			ReadMouse();
 			ReadGamepad();
+			ReadTouch();
 		}
 
 		DefaultConflict();

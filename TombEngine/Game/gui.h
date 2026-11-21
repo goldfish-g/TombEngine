@@ -80,7 +80,8 @@ namespace TEN::Gui
 		VehicleActions,
 		QuickActions,
 		MenuActions,
-		OtherSettings
+		OtherSettings,
+		TouchSettings
 	};
 
 	struct MenuOption
@@ -211,6 +212,7 @@ namespace TEN::Gui
 		void HandleDisplaySettingsInput(bool fromPauseMenu);
 		void HandleControlSettingsInput(ItemInfo* item, bool fromPauseMenu);
 		void HandleOtherSettingsInput(bool fromPauseMenu);
+		void HandleTouchSettingsInput(bool fromPauseMenu);
 		void HandleOptionsInput();
 		void BackupOptions();
 		void RebuildDisplayResolutions();

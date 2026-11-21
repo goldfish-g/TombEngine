@@ -21,6 +21,7 @@
 #include "Scripting/Include/ScriptInterfaceLevel.h"
 #include "Sound/sound.h"
 #include "Specific/Input/Input.h"
+#include "Specific/Input/TouchControls.h"
 #include "Specific/clock.h"
 #include "Specific/configuration.h"
 #include "Specific/EngineMain.h"
@@ -294,7 +295,7 @@ namespace TEN::Gui
 
 		constexpr auto TITLE_OPTION_COUNT	  = TitleOption::Count - 1;
 		constexpr auto LOAD_GAME_OPTION_COUNT = SAVEGAME_MAX - 1;
-		constexpr auto OPTION_OPTION_COUNT	  = 2;
+		constexpr auto OPTION_OPTION_COUNT	  = 3;
 
 		static int selectedOptionBackup;
 		auto inventoryResult = InventoryResult::None;
@@ -346,6 +347,10 @@ namespace TEN::Gui
 
 		case Menu::OtherSettings:
 			HandleOtherSettingsInput(false);
+			return inventoryResult;
+
+		case Menu::TouchSettings:
+			HandleTouchSettingsInput(false);
 			return inventoryResult;
 		}
 
@@ -833,8 +838,13 @@ namespace TEN::Gui
 					}
 					else
 					{
+						// While the touch controls show, only their buttons bind (see SetTouchBinding).
+						bool isTouchLayout = AreTouchControlsVisible();
+						int firstKeyID = isTouchLayout ? KEY_OFFSET_TOUCH : 0;
+						int lastKeyID = isTouchLayout ? KEY_COUNT : KEY_OFFSET_TOUCH;
+
 						int selectedKeyID = KEY_UNASSIGNED;
-						for (int i = 0; i < KEY_COUNT; i++)
+						for (int i = firstKeyID; i < lastKeyID; i++)
 						{
 							if (KeyMap[i])
 							{
@@ -853,19 +863,26 @@ namespace TEN::Gui
 								break;
 
 							case Menu::QuickActions:
-								baseIndex = unsigned int(GeneralActionStrings.size() + VehicleActionStrings.size());
+								baseIndex = (unsigned int)(GeneralActionStrings.size() + VehicleActionStrings.size());
 								break;
 
 							case Menu::MenuActions:
-								baseIndex = unsigned int(GeneralActionStrings.size() + VehicleActionStrings.size() + QuickActionStrings.size());
+								baseIndex = (unsigned int)(GeneralActionStrings.size() + VehicleActionStrings.size() + QuickActionStrings.size());
 								break;
 
 							default:
 								break;
 							}
 
-							g_Bindings.SetKeyBinding(BindingProfileID::Custom, ActionID(baseIndex + SelectedOption), selectedKeyID);
-							DefaultConflict();
+							if (isTouchLayout)
+							{
+								SetTouchBinding(ActionID(baseIndex + SelectedOption), selectedKeyID);
+							}
+							else
+							{
+								g_Bindings.SetKeyBinding(BindingProfileID::Custom, ActionID(baseIndex + SelectedOption), selectedKeyID);
+								DefaultConflict();
+							}
 
 							CurrentSettings.NewKeyWaitTimer = 0;
 							CurrentSettings.IgnoreInput = true;
@@ -957,6 +974,8 @@ namespace TEN::Gui
 
 				if (SelectedOption == (OptionCount - 1) || GuiIsDeselected()) // Apply.
 				{
+					CurrentSettings.Configuration.TouchBindings = g_Bindings.GetBindingProfile(BindingProfileID::Touch);
+					g_Configuration.TouchBindings = CurrentSettings.Configuration.TouchBindings;
 					CurrentSettings.Configuration.Bindings = g_Bindings.GetBindingProfile(BindingProfileID::Custom);
 					g_Configuration.Bindings = g_Bindings.GetBindingProfile(BindingProfileID::Custom);
 					SaveConfiguration();
@@ -964,10 +983,15 @@ namespace TEN::Gui
 				else if (SelectedOption == OptionCount) // Cancel.
 				{
 					g_Bindings.SetBindingProfile(BindingProfileID::Custom, CurrentSettings.Configuration.Bindings);
+					RestoreTouchBindings(CurrentSettings.Configuration.TouchBindings);
 				}
 				else if (SelectedOption == (OptionCount - 2)) // Defaults.
 				{
-					ApplyDefaultBindings();
+					if (AreTouchControlsVisible())
+						g_Bindings.SetDefaultBindingProfile(BindingProfileID::Touch);
+					else
+						ApplyDefaultBindings();
+
 					return;
 				}
 
@@ -989,7 +1013,8 @@ namespace TEN::Gui
 		{
 			Display,
 			OtherSettings,
-			Controls
+			Controls,
+			TouchSettings
 		};
 
 		switch (SelectedOption)
@@ -1009,6 +1034,12 @@ namespace TEN::Gui
 		case OptionsOption::Controls:
 			BackupOptions();
 			MenuToDisplay = Menu::GeneralActions;
+			SelectedOption = 0;
+			break;
+
+		case OptionsOption::TouchSettings:
+			BackupOptions();
+			MenuToDisplay = Menu::TouchSettings;
 			SelectedOption = 0;
 			break;
 		}
@@ -1249,6 +1280,102 @@ namespace TEN::Gui
 		}
 	}
 
+	// The page of the on-screen touch controls (see Specific/Input/TouchControls.h), with the
+	// settings of TRX's touch controls. Sizes and opacity show on the controls as they change.
+	void GuiController::HandleTouchSettingsInput(bool fromPauseMenu)
+	{
+		enum TouchSettingsOption
+		{
+			Enable,
+			Icons,
+			Opacity,
+			ButtonScale,
+			DpadScale,
+			DpadDeadzone,
+
+			Apply,
+			Cancel,
+
+			Count
+		};
+
+		constexpr auto PERCENT_STEP = 0.05f;
+
+		OptionCount = (int)TouchSettingsOption::Count - 1;
+		auto& config = CurrentSettings.Configuration;
+		SetTouchPreview(&config);
+
+		if ((GuiIsPulsed(In::MenuLeft) || GuiIsPulsed(In::MenuRight)) && SelectedOption == TouchSettingsOption::Enable)
+		{
+			SoundEffect(SFX_TR4_MENU_CHOOSE, nullptr, SoundEnvironment::Always);
+			config.EnableTouchControls = !config.EnableTouchControls;
+		}
+
+		if ((GuiIsPulsed(In::MenuLeft) || GuiIsPulsed(In::MenuRight)) && SelectedOption == TouchSettingsOption::Icons)
+		{
+			SoundEffect(SFX_TR4_MENU_CHOOSE, nullptr, SoundEnvironment::Always);
+			config.TouchLowResIcons = !config.TouchLowResIcons;
+		}
+
+		float step = 0.0f;
+		if (IsPulsed(In::MenuLeft, 0.05f, 0.4f))
+			step = -PERCENT_STEP;
+		else if (IsPulsed(In::MenuRight, 0.05f, 0.4f))
+			step = PERCENT_STEP;
+
+		if (step != 0.0f)
+		{
+			auto adjust = [&](float& value, float min, float max)
+			{
+				float newValue = std::clamp(std::round((value + step) / PERCENT_STEP) * PERCENT_STEP, min, max);
+				if (newValue != value)
+					SoundEffect(SFX_TR4_MENU_ROTATE, nullptr, SoundEnvironment::Always);
+
+				value = newValue;
+			};
+
+			switch (SelectedOption)
+			{
+			case TouchSettingsOption::Opacity:
+				adjust(config.TouchOpacity, 0.1f, 1.0f);
+				break;
+
+			case TouchSettingsOption::ButtonScale:
+				adjust(config.TouchButtonScale, 0.5f, 2.0f);
+				break;
+
+			case TouchSettingsOption::DpadScale:
+				adjust(config.TouchStickScale, 0.5f, 2.0f);
+				break;
+
+			case TouchSettingsOption::DpadDeadzone:
+				adjust(config.TouchStickDeadzone, 0.1f, 0.7f);
+				break;
+			}
+		}
+
+		SelectedOption = GetLoopedSelectedOption(SelectedOption, OptionCount, g_Configuration.MenuOptionLoopingMode == MenuOptionLoopingMode::AllMenus);
+
+		if (!GuiIsSelected() && !GuiIsDeselected())
+			return;
+
+		if (SelectedOption == TouchSettingsOption::Apply || GuiIsDeselected())
+		{
+			g_Configuration = config;
+			SaveConfiguration();
+			ApplyTouchConfiguration();
+		}
+		else if (SelectedOption != TouchSettingsOption::Cancel)
+		{
+			return;
+		}
+
+		SetTouchPreview(nullptr);
+		MenuToDisplay = Menu::Options;
+		SelectedOption = 3;
+		SoundEffect(SFX_TR4_MENU_SELECT, nullptr, SoundEnvironment::Always);
+	}
+
 	InventoryResult GuiController::DoPauseMenu(ItemInfo* item)
 	{
 		enum PauseMenuOption
@@ -1260,7 +1387,7 @@ namespace TEN::Gui
 
 		static const int numPauseOptions	  = 2;
 		static const int numStatisticsOptions = 0;
-		static const int numOptionsOptions	  = 2;
+		static const int numOptionsOptions	  = 3;
 
 		TimeInMenu++;
 		UpdateInputActions();
@@ -1292,6 +1419,10 @@ namespace TEN::Gui
 
 		case Menu::OtherSettings:
 			HandleOtherSettingsInput(true);
+			return InventoryResult::None;
+
+		case Menu::TouchSettings:
+			HandleTouchSettingsInput(true);
 			return InventoryResult::None;
 		}
 

@@ -74,6 +74,9 @@ namespace TEN::Renderer
 	// Helper functions to get specific generic strings
 	inline const std::string Str_Enabled(bool enabled = false) { return g_GameFlow->GetString(enabled ? STRING_ENABLED : STRING_DISABLED); }
 	inline const std::string Str_LoadSave(bool save = false) { return g_GameFlow->GetString(save ? STRING_SAVE_GAME : STRING_LOAD_GAME); }
+
+	// Strings of the touch controls, which games made before them lack.
+	inline const std::string Str_Touch(const char* id, const char* english) { return g_GameFlow->IsStringPresent(id) ? g_GameFlow->GetString(id) : english; }
 	inline const std::string Str_MenuOptionLoopingMode(MenuOptionLoopingMode loopingMode)
 	{
 		switch (loopingMode)
@@ -92,6 +95,10 @@ namespace TEN::Renderer
 
 	inline const int GetEffectiveBoundKeyID(ActionID actionID)
 	{
+		// While the touch controls show, the controls pages show and edit their bindings.
+		if (AreTouchControlsVisible())
+			return g_Bindings.GetBoundKeyID(BindingProfileID::Touch, actionID);
+
 		int defaultKeyID = g_Bindings.GetBoundKeyID(BindingProfileID::Default, actionID);
 		int userKeyID = g_Bindings.GetBoundKeyID(BindingProfileID::Custom, actionID);
 		return (userKeyID != KEY_UNASSIGNED) ? userKeyID : defaultKeyID;
@@ -206,6 +213,10 @@ namespace TEN::Renderer
 
 			// Controls
 			AddString(MenuCenterEntry, y, g_GameFlow->GetString(STRING_CONTROLS), plainColor, SF_Center(titleOption == 2));
+			GetNextLinePosition(&y);
+
+			// Touch controls
+			AddString(MenuCenterEntry, y, Str_Touch(STRING_TOUCH_CONTROLS, "Touch Controls"), plainColor, SF_Center(titleOption == 3));
 			break;
 
 		case Menu::Display:
@@ -355,6 +366,56 @@ namespace TEN::Renderer
 			AddString(MenuCenterEntry, y, g_GameFlow->GetString(STRING_CANCEL), optionColor, SF_Center(titleOption == 13));
 
 			break;
+
+		case Menu::TouchSettings:
+		{
+			const auto& config = g_Gui.GetCurrentSettings().Configuration;
+			auto percent = [](float value) { return std::to_string((int)std::round(value * 100.0f)) + "%"; };
+
+			y = MenuVerticalDisplaySettings;
+
+			// Title
+			AddString(MenuCenterEntry, y, Str_Touch(STRING_TOUCH_CONTROLS, "Touch Controls"), headerColor, SF_Center());
+			GetNextBlockPosition(&y);
+
+			// Touch controls
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_CONTROLS, "Touch Controls"), optionColor, SF(titleOption == 0));
+			AddString(MenuRightSideEntry, y, Str_Enabled(config.EnableTouchControls), plainColor, SF(titleOption == 0));
+			GetNextLinePosition(&y);
+
+			// Icons
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_ICONS, "Touch Icons"), optionColor, SF(titleOption == 1));
+			AddString(MenuRightSideEntry, y, config.TouchLowResIcons ? Str_Touch(STRING_TOUCH_ICONS_LOW_RES, "Low Res") : Str_Touch(STRING_TOUCH_ICONS_HIGH_RES, "High Res"), plainColor, SF(titleOption == 1));
+			GetNextLinePosition(&y);
+
+			// Opacity
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_OPACITY, "Touch Opacity"), optionColor, SF(titleOption == 2));
+			AddString(MenuRightSideEntry, y, percent(config.TouchOpacity), plainColor, SF(titleOption == 2));
+			GetNextLinePosition(&y);
+
+			// Button scale
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_BUTTON_SCALE, "Touch Button Scale"), optionColor, SF(titleOption == 3));
+			AddString(MenuRightSideEntry, y, percent(config.TouchButtonScale), plainColor, SF(titleOption == 3));
+			GetNextLinePosition(&y);
+
+			// D-pad scale
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_DPAD_SCALE, "Touch D-Pad Scale"), optionColor, SF(titleOption == 4));
+			AddString(MenuRightSideEntry, y, percent(config.TouchStickScale), plainColor, SF(titleOption == 4));
+			GetNextLinePosition(&y);
+
+			// D-pad deadzone
+			AddString(MenuLeftSideEntry, y, Str_Touch(STRING_TOUCH_DPAD_DEADZONE, "Touch D-Pad Deadzone"), optionColor, SF(titleOption == 5));
+			AddString(MenuRightSideEntry, y, percent(config.TouchStickDeadzone), plainColor, SF(titleOption == 5));
+			GetNextBlockPosition(&y);
+
+			// Apply
+			AddString(MenuCenterEntry, y, g_GameFlow->GetString(STRING_APPLY), optionColor, SF_Center(titleOption == 6));
+			GetNextLinePosition(&y);
+
+			// Cancel
+			AddString(MenuCenterEntry, y, g_GameFlow->GetString(STRING_CANCEL), optionColor, SF_Center(titleOption == 7));
+			break;
+		}
 
 		case Menu::GeneralActions:
 			{
@@ -623,6 +684,7 @@ namespace TEN::Renderer
 		case Menu::MenuActions:
 		case Menu::Display:
 		case Menu::OtherSettings:
+		case Menu::TouchSettings:
 			RenderOptionsMenu(menu, MenuVerticalOptionsTitle);
 			break;
 		}
@@ -670,6 +732,7 @@ namespace TEN::Renderer
 		case Menu::MenuActions:
 		case Menu::Display:
 		case Menu::OtherSettings:
+		case Menu::TouchSettings:
 			RenderOptionsMenu(menu, MenuVerticalOptionsPause);
 			break;
 		}
@@ -1556,6 +1619,7 @@ namespace TEN::Renderer
 		ClearScene();
 
 		_graphicsDevice->ClearState();
+		DrawTouchControls();
 		_graphicsDevice->Present();
 	}
 
@@ -1623,6 +1687,7 @@ namespace TEN::Renderer
 
 		RenderInventoryScene(_backBuffer.get(), _dumpScreenRenderTarget->GetRenderTarget(), 0.5f);
 
+		DrawTouchControls();
 		_graphicsDevice->Present();
 	}
 
@@ -1636,6 +1701,7 @@ namespace TEN::Renderer
 
 		RenderInventoryScene(_backBuffer.get(), _dumpScreenRenderTarget->GetRenderTarget(), 1.0f);
 		
+		DrawTouchControls();
 		_graphicsDevice->Present();
 	}
 
