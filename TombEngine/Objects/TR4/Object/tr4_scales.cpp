@@ -6,7 +6,7 @@
 #include "Game/control/control.h"
 #include "Game/effects/drip.h"
 #include "Game/effects/tomb4fx.h"
-#include "Game/Gui.h"
+#include "Game/gui.h"
 #include "Game/Hud/Hud.h"
 #include "Game/items.h"
 #include "Game/Lara/lara.h"

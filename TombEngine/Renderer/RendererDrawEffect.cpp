@@ -1332,7 +1332,7 @@ namespace TEN::Renderer
 			auto zRot = (gunflash == GAME_OBJECT_ID::ID_GUN_FLASH2) ? 0.0f : TO_RAD((short)std::hash<int>()(GlobalCounter));
 
 			// Divide gunflash tint by 2 because tinting uses multiplication and additive color which doesn't look good with overbright color values.
-			_stObjects.Objects[0].Color = settings.ColorizeMuzzleFlash ? settings.FlashColor : NEUTRAL_COLOR;
+			_stObjects.Objects[0].Color = settings.ColorizeMuzzleFlash ? (Vector4)settings.FlashColor : NEUTRAL_COLOR;
 
 			for (const auto& flashBucket : flashMesh.Buckets)
 			{

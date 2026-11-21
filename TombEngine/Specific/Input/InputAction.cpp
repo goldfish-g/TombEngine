@@ -1,7 +1,7 @@
 #include "framework.h"
 #include "Specific/Input/InputAction.h"
 
-#include "Game/Gui.h"
+#include "Game/gui.h"
 #include "Specific/clock.h"
 #include "Scripting/Include/Flow/ScriptInterfaceFlowHandler.h"
 #include "Specific/trutils.h"

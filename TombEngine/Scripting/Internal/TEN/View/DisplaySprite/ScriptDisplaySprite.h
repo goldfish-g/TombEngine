@@ -9,7 +9,7 @@
 using namespace TEN::Effects::DisplaySprite;
 using namespace TEN::Scripting::Types;
 
-enum BLEND_MODE;
+enum BLEND_MODE : int;
 
 namespace TEN::Scripting::DisplaySprite
 {

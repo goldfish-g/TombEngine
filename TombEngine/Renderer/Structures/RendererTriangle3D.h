@@ -13,6 +13,6 @@ namespace TEN::Renderer::Structures
 
 	public:
 		std::array<Vector3, VERTEX_COUNT> Vertices = {};
-		Vector4 Color = Vector3::Zero;
+		Vector4 Color = Vector4::Zero;
 	};
 }

@@ -136,7 +136,7 @@ namespace TEN::Entities::Creatures::TR2
 		if (!CreatureActive(skidooItemNumber))
 			return;
 
-		if (!skidooItem->Data)
+		if (skidooItem->Data.is<std::nullptr_t>())
 		{
 			EnableEntityAI(skidooItemNumber, true);
 			skidooItem->Status = ITEM_ACTIVE;

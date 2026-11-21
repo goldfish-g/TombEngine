@@ -555,12 +555,13 @@ namespace TEN::Entities::Vehicles
 			minecartItem->Pose.Translate(minecartItem->Pose.Orientation.y, minecartItem->Animation.Velocity.z);
 		}
 
-		minecart->FloorHeightMiddle = GetVehicleHeight(minecartItem, 0, 0, true, &Vector3i());
+		auto pos = Vector3i::Zero;
+		minecart->FloorHeightMiddle = GetVehicleHeight(minecartItem, 0, 0, true, &pos);
 
 		if (!minecart->VerticalVelocity)
 		{
 			minecartItem->Pose.Position.y = minecart->FloorHeightMiddle;
-			minecart->FloorHeightFront = GetVehicleHeight(minecartItem, CLICK(1), 0, false, &Vector3i());
+			minecart->FloorHeightFront = GetVehicleHeight(minecartItem, CLICK(1), 0, false, &pos);
 			minecart->Gradient = minecart->FloorHeightMiddle - minecart->FloorHeightFront;
 			
 			if (minecart->FallTime > MINECART_FALL_DAMAGE_DELAY_TIME)
@@ -965,7 +966,7 @@ namespace TEN::Entities::Vehicles
 		auto* lara = GetLaraInfo(laraItem);
 		auto* minecartItem = &g_Level.Items[lara->Context.Vehicle];
 
-		if (!minecartItem->Data)
+		if (minecartItem->Data.is<std::nullptr_t>())
 		{
 			TENLog("Minecart data is nullptr!", LogLevel::Error);
 			return false;

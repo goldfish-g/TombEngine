@@ -38,7 +38,7 @@ namespace TEN::Effects
 		part.room = snowMobile->RoomNumber;
 		part.ageRate = Random::GenerateFloat(0.9f, 1.3f);
 		float size = Random::GenerateFloat(96, 128);
-		part.worldPosition = {x, float(snowMobile->Pose.Position.y) - size / 2 , z};
+		part.worldPosition = Vector3(x, float(snowMobile->Pose.Position.y) - size / 2 , z);
 		part.sequence = ID_SKIDOO_SNOW_TRAIL_SPRITES;
 		part.size = Random::GenerateFloat(256, 512);
 		part.blendMode = BlendMode::AlphaBlend;
@@ -63,7 +63,7 @@ namespace TEN::Effects
 			part.life = Random::GenerateFloat(5, 9);
 			part.room = boat->RoomNumber;
 			part.ageRate = Random::GenerateFloat(0.9f, 1.3f);
-			part.worldPosition = { x, y, z };
+			part.worldPosition = Vector3(x, y, z);
 			part.sequence = ID_MOTORBOAT_FOAM_SPRITES;
 			part.size = Random::GenerateFloat(256, 512);
 			part.blendMode = BlendMode::Additive;

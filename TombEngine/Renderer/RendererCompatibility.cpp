@@ -603,24 +603,27 @@ namespace TEN::Renderer
 		_roomsVertexBuffer = _graphicsDevice->CreateVertexBuffer((int)_roomsVertices.size(), sizeof(Vertex), _roomsVertices.data());
 		_roomsIndexBuffer = _graphicsDevice->CreateIndexBuffer((int)_roomsIndices.size(), _roomsIndices.data());
 
-		std::for_each(std::execution::par_unseq,
-			_rooms.begin(),
-			_rooms.end(),
-			[](RendererRoom& room)
-			{
-				std::sort(
-					room.Buckets.begin(),
-					room.Buckets.end(),
-					[](RendererBucket& a, RendererBucket& b)
-					{
-						if (a.BlendMode == b.BlendMode)
-							return (a.Texture < b.Texture);
-						else
-							return (a.BlendMode < b.BlendMode);
-					}
-				);
-			}
-		);
+		auto sortRoomBuckets = [](RendererRoom& room)
+		{
+			std::sort(
+				room.Buckets.begin(),
+				room.Buckets.end(),
+				[](RendererBucket& a, RendererBucket& b)
+				{
+					if (a.BlendMode == b.BlendMode)
+						return (a.Texture < b.Texture);
+					else
+						return (a.BlendMode < b.BlendMode);
+				}
+			);
+		};
+
+		// Not every standard library has parallel algorithms (Emscripten's libc++ doesn't).
+#ifdef __cpp_lib_execution
+		std::for_each(std::execution::par_unseq, _rooms.begin(), _rooms.end(), sortRoomBuckets);
+#else
+		std::for_each(_rooms.begin(), _rooms.end(), sortRoomBuckets);
+#endif
 
 		TENLog("Preparing object data...", LogLevel::Info);
 			 

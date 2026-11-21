@@ -2833,9 +2833,6 @@ namespace TEN::Gui
 		const auto& player = GetLaraInfo(*item);
 		auto& ring = Rings[(int)ringType];
 
-		if (ring.CurrentObjectList <= 0)
-			return;
-
 		if (ringType == RingTypes::Ammo)
 		{
 			AmmoSelectorFadeVal = 0;

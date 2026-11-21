@@ -15,7 +15,7 @@
 #include "Game/effects/tomb4fx.h"
 #include "Game/effects/weather.h"
 #include "Game/effects/ParticleGroup.h"
-#include "Game/Gui.h"
+#include "Game/gui.h"
 #include "Game/Hud/Hud.h"
 #include "Game/items.h"
 #include "Game/Lara/lara.h"

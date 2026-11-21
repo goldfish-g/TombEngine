@@ -86,8 +86,8 @@ namespace TEN::Renderer
 		View = Matrix::CreateLookAt(WorldPosition, target, up);
 		Projection = Matrix::CreatePerspectiveFieldOfView(fov, w / (float)h, n, f);
 		ViewProjection = View * Projection;
-		ViewSize = { (float)w, (float)h };
-		InvViewSize = { 1.0f / w, 1.0f / h };
+		ViewSize = Vector2((float)w, (float)h);
+		InvViewSize = Vector2(1.0f / w, 1.0f / h);
 		Frustum.Update(View, Projection);
 		NearPlane = n;
 		FarPlane = f;
@@ -103,8 +103,8 @@ namespace TEN::Renderer
 		float aspect = (float)width / (float)height;
 		Projection = Matrix::CreatePerspectiveFieldOfView(fov, aspect, n, f);
 		ViewProjection = View * Projection;
-		ViewSize = { (float)width, (float)height };
-		InvViewSize = { 1.0f / width, 1.0f / height };
+		ViewSize = Vector2((float)width, (float)height);
+		InvViewSize = Vector2(1.0f / width, 1.0f / height);
 		Frustum.Update(View, Projection);
 		NearPlane = n;
 		FarPlane = f;

@@ -41,9 +41,9 @@ namespace TEN::Control::Volumes
 	void TestVolumes(int roomNumber, StaticMesh* mesh);
 	void TestVolumes(CAMERA_INFO* camera);
 
-	bool HandleEvent(Event& event, Activator& activator);
+	bool HandleEvent(Event& event, const Activator& activator);
 	bool HandleEvent(const std::string& name, EventType eventType, Activator activator);
-	void HandleAllGlobalEvents(EventType type, Activator& activator);
+	void HandleAllGlobalEvents(EventType type, const Activator& activator);
 	bool SetEventState(const std::string& name, EventType eventType, bool enabled);
 	void InitializeNodeScripts();
 }

@@ -101,7 +101,7 @@ namespace TEN::Effects::Smoke
 		s.velocity = direction2 * Random::GenerateFloat(7, 9);
 		s.gravity = -0.2f;
 		s.friction = Random::GenerateFloat(0.7f, 0.85f);
-		s.sourceColor = g_GameFlow->GetSettings()->Flare.Color * Vector4(0.5f);
+		s.sourceColor = (Vector4)g_GameFlow->GetSettings()->Flare.Color * Vector4(0.5f);
 		s.destinationColor = Vector4(1, 1, 1, 0);
 		s.life = Random::GenerateFloat(25, 35);
 		s.angularVelocity = Random::GenerateFloat(-0.3f, 0.3f);
@@ -146,7 +146,7 @@ namespace TEN::Effects::Smoke
 				float size = Random::GenerateFloat(48, 80);
 				s.sourceSize = size * 2;
 				s.destinationSize = size * 8;
-				s.sourceColor = { 0.75, 0.75, 1, 1 };
+				s.sourceColor = Vector4(0.75f, 0.75f, 1.0f, 1.0f);
 				s.terminalVelocity = 0;
 				s.friction = 0.82f;
 				s.life = Random::GenerateFloat(60, 90);
@@ -185,7 +185,7 @@ namespace TEN::Effects::Smoke
 			float size = (float)((GetRandomControl() & 0x0F) + 48);
 
 			if (weaponType == LaraWeaponType::RocketLauncher)
-				s.sourceColor = { 0.75, 0.75, 1, 1 };
+				s.sourceColor = Vector4(0.75f, 0.75f, 1.0f, 1.0f);
 
 			s.sourceSize = size / 2;
 			s.destinationSize = size * 4;

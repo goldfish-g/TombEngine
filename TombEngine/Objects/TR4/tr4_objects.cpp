@@ -44,7 +44,7 @@
 #include "Objects/TR4/Entity/tr4_setha.h"
 
 // Objects
-#include "Objects/TR4/Floor/tr4_burningFloor.h"
+#include "Objects/TR4/Floor/tr4_burningfloor.h"
 #include "Objects/TR4/Object/FireRope.h"
 #include "Objects/TR4/Object/StatuePlinth.h"
 #include "Objects/TR4/Object/WraithTrap.h"

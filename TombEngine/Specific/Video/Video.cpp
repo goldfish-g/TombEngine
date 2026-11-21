@@ -79,9 +79,9 @@ namespace TEN::Video
 		if (pixelCount == 0)
 			return Color(0.0f, 0.0f, 0.0f);
 
-		unsigned char avgR = unsigned char(accR / pixelCount);
-		unsigned char avgG = unsigned char(accG / pixelCount);
-		unsigned char avgB = unsigned char(accB / pixelCount);
+		unsigned char avgR = (unsigned char)(accR / pixelCount);
+		unsigned char avgG = (unsigned char)(accG / pixelCount);
+		unsigned char avgB = (unsigned char)(accB / pixelCount);
 
 		auto result = Vector3((float)avgR / 255.0f, (float)avgG / 255.0f, (float)avgB / 255.0f);
 

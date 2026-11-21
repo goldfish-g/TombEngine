@@ -17,6 +17,14 @@ namespace TEN::Serialization
 	Common::GameVector FromGameVector(const GameVector& vec);
 	Common::Pose FromPose(const Pose& pose);
 
+	// Flatbuffers builders take structs by pointer and copy them immediately. Lets the result of the From*()
+	// functions above be passed directly; taking the address of a temporary with & only compiles in MSVC.
+	template <typename T>
+	const T* AsPointer(const T& value)
+	{
+		return &value;
+	}
+
 	EulerAngles ToEulerAngles(const Common::EulerAngles* eulers);
 	DirectX::SimpleMath::Vector2 ToVector2(const Common::Vector2* vec);
 	TEN::Math::Vector2i ToVector2i(const Common::Vector2* vec);

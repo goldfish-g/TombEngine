@@ -283,7 +283,7 @@ namespace TEN::Renderer
 		materialTypeAndFlags |= int(g_Level.Materials[materialIndex].HasHeightMap) << 8;
 		materialTypeAndFlags |= int(g_Level.Materials[materialIndex].HasAmbientOcclusionMap) << 9;
 		materialTypeAndFlags |= int(g_Level.Materials[materialIndex].HasEmissiveMap) << 10;
-		auto& materialProperties = g_Level.Materials[materialIndex].GetInterpolatedProperties(GetInterpolationFactor());
+		auto materialProperties = g_Level.Materials[materialIndex].GetInterpolatedProperties(GetInterpolationFactor());
 
 		if (materialTypeAndFlags == _stPerDraw.MaterialTypeAndFlags && materialProperties == _stPerDraw.MaterialProperties && !force)
 		{

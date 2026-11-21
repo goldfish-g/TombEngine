@@ -582,7 +582,7 @@ void PlaySoundTrack(const std::string& track, SoundTrackType type, std::optional
 		// Only activates if no custom position is passed as argument.
 		if (!pos.has_value())
 		{
-			QWORD newPos = BASS_ChannelGetLength(stream, BASS_POS_BYTE) * ((float)GetRandomControl() / (float)RAND_MAX);
+			QWORD newPos = BASS_ChannelGetLength(stream, BASS_POS_BYTE) * ((float)GetRandomControl() / (float)SHRT_MAX);
 			BASS_ChannelSetPosition(stream, newPos, BASS_POS_BYTE);
 		}
 	}

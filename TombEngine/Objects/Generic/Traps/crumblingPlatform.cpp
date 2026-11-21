@@ -6,7 +6,7 @@
 #include "Game/collision/collide_room.h"
 #include "Game/collision/floordata.h"
 #include "Game/collision/Point.h"
-#include "Game/effects/Bubble.h"
+#include "Game/effects/bubble.h"
 #include "Game/effects/effects.h"
 #include "Game/effects/Splash.h"
 #include "Game/Lara/lara.h"
