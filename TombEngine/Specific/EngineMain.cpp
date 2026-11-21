@@ -17,6 +17,12 @@
 #include "Scripting/Internal/LanguageScript.h"
 #include "Video/Video.h"
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+#include <emscripten.h>
+
+#include "Renderer/Native/WebGL2/WebGL2GraphicsDevice.h"
+#endif
+
 using namespace TEN::Renderer;
 using namespace TEN::Input;
 using namespace TEN::Utils;
@@ -250,6 +256,83 @@ void WaitIfGamePaused()
 	SDL_UnlockMutex(GamePauseMutex);
 }
 
+// Handles the events of the window. Returns false once it is closed.
+static bool HandleWindowEvents(SDL_Window* sdlWindow)
+{
+	bool running = true;
+	auto event = SDL_Event{};
+	while (SDL_PollEvent(&event))
+	{
+		switch (event.type)
+		{
+		case SDL_EVENT_QUIT:
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+			DoTheGame = false;
+			running = false;
+			break;
+
+		case SDL_EVENT_WINDOW_FOCUS_GAINED:
+			HandleWindowFocusGained(sdlWindow);
+			break;
+
+		case SDL_EVENT_WINDOW_FOCUS_LOST:
+			HandleWindowFocusLost(sdlWindow);
+			break;
+
+		case SDL_EVENT_WINDOW_RESIZED:
+		case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+		{
+			if (!g_Configuration.EnableWindowedMode)
+				break;
+
+			int w = 0, h = 0;
+			SDL_GetWindowSizeInPixels(sdlWindow, &w, &h);
+
+			SDL_LockMutex(NextResolutionMutex);
+			NextResolution = Vector2i(w, h);
+			SDL_UnlockMutex(NextResolutionMutex);
+			break;
+		}
+
+		default:
+			HandleSDLEvent(event);
+			break;
+		}
+	}
+
+	return running;
+}
+
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+// The page's loop, once per display refresh: the window's events, then the frame
+// the game thread presented last, drawn with WebGL (see WebGL2GraphicsDevice.h).
+static void BrowserMainLoop(void* argument)
+{
+	static bool running = true;
+	auto* sdlWindow = (SDL_Window*)argument;
+
+	if (running && !ThreadEnded && DoTheGame)
+		running = HandleWindowEvents(sdlWindow);
+	else
+		ThreadEnded = true;
+
+	// Frames are drawn until the game thread has ended, as it may be waiting for one.
+	TEN::Renderer::Native::WebGL2::ExecuteBrowserFrame();
+
+	if (!ThreadEnded || DoTheGame)
+		return;
+
+	emscripten_cancel_main_loop();
+
+	TENLog("Cleaning up and exiting...", LogLevel::Info);
+
+	SDL_DestroyWindow(sdlWindow);
+	EngineClose();
+
+	EM_ASM({ if (Module.onEngineExit) Module.onEngineExit(); });
+}
+#endif
+
 int main(int argc, char* argv[])
 {
 	g_Platform = CreatePlatformSubsystem();
@@ -386,6 +469,11 @@ int main(int argc, char* argv[])
 		SetAudioConfiguration(g_Configuration);
 	}
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+	// A page can't go fullscreen by itself: the engine runs in its canvas, and the page offers fullscreen.
+	g_Configuration.EnableWindowedMode = true;
+#endif
+
 	// Initialize main window.
 	int width = g_Configuration.ScreenWidth;
 	int height = g_Configuration.ScreenHeight;
@@ -473,48 +561,15 @@ int main(int argc, char* argv[])
 		SDL_RaiseWindow(sdlWindow);
 	}
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+	// The page runs the engine from its own loop, see BrowserMainLoop().
+	emscripten_set_main_loop_arg(BrowserMainLoop, sdlWindow, 0, false);
+	return 0;
+#else
 	bool running = true;
 	while (running && !ThreadEnded && DoTheGame)
 	{
-		auto event = SDL_Event{};
-		while (SDL_PollEvent(&event))
-		{
-			switch (event.type)
-			{
-			case SDL_EVENT_QUIT:
-			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-				DoTheGame = false;
-				running = false;
-				break;
-
-			case SDL_EVENT_WINDOW_FOCUS_GAINED:
-				HandleWindowFocusGained(sdlWindow);
-				break;
-
-			case SDL_EVENT_WINDOW_FOCUS_LOST:
-				HandleWindowFocusLost(sdlWindow);
-				break;
-
-			case SDL_EVENT_WINDOW_RESIZED:
-			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-			{
-				if (!g_Configuration.EnableWindowedMode)
-					break;
-
-				int w = 0, h = 0;
-				SDL_GetWindowSizeInPixels(sdlWindow, &w, &h);
-
-				SDL_LockMutex(NextResolutionMutex);
-				NextResolution = Vector2i(w, h);
-				SDL_UnlockMutex(NextResolutionMutex);
-				break;
-			}
-
-			default:
-				HandleSDLEvent(event);
-				break;
-			}
-		}
+		running = HandleWindowEvents(sdlWindow);
 
 		// Avoid looping at 100% where there are no events.
 		SDL_Delay(1);
@@ -531,6 +586,7 @@ int main(int argc, char* argv[])
 	EngineClose();
 
 	exit(EXIT_SUCCESS);
+#endif
 }
 
 void ApplyPendingWindowResize()

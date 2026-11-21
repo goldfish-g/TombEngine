@@ -88,7 +88,8 @@ int TimeSync()
 	auto counter = SDL_GetPerformanceCounter();
 	double dCounter = (double)counter / LdFreq;
 
-	int gameFrames = (int)dCounter - (int)LdSync;
+	// In 64 bits: the counter needn't start near zero (it doesn't in the browser).
+	int gameFrames = (int)((long long)dCounter - (long long)LdSync);
 	LdSync = dCounter;
 
 	return gameFrames;

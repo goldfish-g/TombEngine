@@ -1,6 +1,10 @@
 #include "framework.h"
 #include "Game/debug/debug.h"
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+#include "Specific/Platform/Web/BrowserLogSink.h"
+#endif
+
 #include "Renderer/Renderer.h"
 
 using TEN::Renderer::g_Renderer;
@@ -76,10 +80,14 @@ namespace TEN::Debug
 		std::string filename = "TENLog_" + GetTimestampString() + ".txt";
 		auto logPath = logDir / filename;
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+		auto logger = std::make_shared<spdlog::logger>("multi_sink", std::make_shared<TEN::Platform::BrowserLogSink>(logPath.string()));
+#else
 		auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logPath.string(), true);
 		auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
 		auto logger = std::make_shared<spdlog::logger>("multi_sink", spdlog::sinks_init_list{ fileSink, consoleSink });
+#endif
 
 		spdlog::initialize_logger(logger);
 		logger->set_level(spdlog::level::info);

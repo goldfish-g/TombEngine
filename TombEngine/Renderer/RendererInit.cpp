@@ -11,6 +11,7 @@
 #include "Specific/Video/Video.h"
 #include "Specific/EngineMain.h"
 #include "Renderer/Native/DirectX11/DX11GraphicsDevice.h"
+#include "Renderer/Native/WebGL2/WebGL2GraphicsDevice.h"
 #include "Renderer/Graphics/VRAMTracker.h"
 
 extern GameConfiguration g_Configuration;
@@ -118,13 +119,6 @@ namespace TEN::Renderer
 		vertices[2].UV = Vector2(2.0f, 1.0f);
 
 		_fullscreenTriangleVertexBuffer = _graphicsDevice->CreateVertexBuffer(3, sizeof(PostProcessVertex), vertices);
-
-		D3D11_INPUT_ELEMENT_DESC postProcessInputLayoutItems[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-		};
 
 		std::vector<RendererInputLayoutField> fields;
 
@@ -359,8 +353,8 @@ namespace TEN::Renderer
 			view->Viewport.Width = w;
 			view->Viewport.Height = h;
 
-			view->Camera.ViewSize = { (float)w, (float)h };
-			view->Camera.InvViewSize = { 1.0f / w, 1.0f / h };
+			view->Camera.ViewSize = Vector2((float)w, (float)h);
+			view->Camera.InvViewSize = Vector2(1.0f / w, 1.0f / h);
 			view->Camera.Projection = Matrix::CreatePerspectiveFieldOfView(view->Camera.FOV, (float)w / (float)h, view->Camera.NearPlane, view->Camera.FarPlane);
 			view->Camera.ViewProjection = view->Camera.View * view->Camera.Projection;
 			view->Camera.Frustum.Update(view->Camera.View, view->Camera.Projection);
@@ -413,7 +407,11 @@ namespace TEN::Renderer
 	{
 		TENLog("Creating renderer native device...", LogLevel::Info);
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+		_graphicsDevice = std::make_unique<TEN::Renderer::Native::WebGL2::WebGL2GraphicsDevice>();
+#else
 		_graphicsDevice = std::make_unique<TEN::Renderer::Native::DirectX11::DX11GraphicsDevice>();
+#endif
 		_graphicsDevice->CreateDevice();
 
 		// Populate adapter info and store in VRAM tracker.
