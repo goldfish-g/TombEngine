@@ -1,0 +1,46 @@
+# TombEngine in the browser
+
+The browser build of TombEngine: WebAssembly with Emscripten, drawing with WebGL 2.
+It builds from the same sources as the Windows build; what only exists on Windows
+has a browser counterpart.
+
+## Building
+
+Everything builds in the image of this folder's `Dockerfile` (Emscripten, SDL 3,
+Lua, LZ4, DirectXMath and the shader tools, at the versions TombEngine uses):
+
+    docker build -t ten-webgl-dev Tools/WebGL
+    docker run --rm -v <repo>:/ten -w /ten ten-webgl-dev Tools/WebGL/build.sh /ten/build-web
+
+`build.sh` configures `CMakeLists.txt` and builds `TombEngine.js`, `TombEngine.wasm`
+and `TombEngine.data` (the engine's own shaders, compiled for WebGL, and the dummy
+title level). The sources are read from `TombEngine.vcxproj`.
+
+## How it maps to the Windows build
+
+- **Renderer** - `Renderer/Native/WebGL2` implements the graphics device interface
+  the Direct3D 11 renderer implements. WebGL can only be used from the page's main
+  thread while the engine draws from its own threads, so the device records every
+  call and the main thread plays each presented frame back once per display
+  refresh. It keeps Direct3D 11's state and rules (what an empty slot reads, what
+  ClearState resets, render targets that can't be read while drawn to).
+- **Shaders** - `compile_shaders.py` compiles a game's HLSL shaders ahead of time
+  (DXC, SPIRV-Cross) into GLSL ES 3.00, as the Windows build compiles them at
+  start-up. It writes `Shaders/WebGL.tenshaders` for a game; games without one
+  use the engine's. A few Direct3D features GLSL ES lacks are rewritten on the
+  way: structured buffers, comparison sampling of float textures, effect-file
+  samplers, Direct3D constant buffer packing.
+- **Platform** - `Specific/Platform/Web` holds the platform subsystem, a log that
+  can't deadlock the page, and the libraries with no browser build: BASS (sound),
+  libVLC (video, not playing yet) and Discord (nothing to talk to in a page).
+- **Main loop** - `Specific/EngineMain.cpp` runs the window's events and the frames
+  from the page's loop instead of its own.
+- **Files** - `pre.js` makes file names case-insensitive and accepts backslashes,
+  as Windows does, since games rely on both.
+
+## Running
+
+The page has to be cross-origin isolated (COOP and COEP headers) and secure, for
+the engine's threads. Before calling `callMain(['-gamedir', '/games/<id>'])` it writes
+the game's files into the engine's file system. See `ten-web` in the super repo
+for a test page.
