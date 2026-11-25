@@ -622,6 +622,19 @@ namespace TEN::Renderer::Native::WebGL2
         });
     }
 
+    void WebGL2GraphicsDevice::UpdateTexture2DFromVideo(ITexture2D* texture, int videoID)
+    {
+        auto* native = GetNative(texture);
+        if (native == nullptr)
+            return;
+
+        Record([native, videoID]()
+        {
+            BeginTextureUpload(GL_TEXTURE_2D, native->Texture);
+            EM_ASM({ Module['tenWebVideo']['upload']($0, GLctx, $1, $2); }, videoID, native->Width, native->Height);
+        });
+    }
+
     std::unique_ptr<ITexture3D> WebGL2GraphicsDevice::CreateTexture3D(int width, int height, int depth, SurfaceFormat format, const void* data)
     {
         auto glFormat = GetGLFormat(format);

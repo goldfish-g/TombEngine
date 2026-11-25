@@ -8,6 +8,9 @@ using namespace TEN::Renderer::Graphics;
 
 namespace TEN::Video
 {
+	static const std::string			  VIDEO_PATH		 = "FMV/";
+	static const std::vector<std::string> VIDEO_EXTENSIONS = { ".mp4", ".avi", ".mkv", ".mov" };
+
 	enum class VideoPlaybackMode
 	{
 		Exclusive,
@@ -17,10 +20,17 @@ namespace TEN::Video
 	class VideoHandler
 	{
 	private:
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+		// The browser's video playing (see Specific/Platform/Web/VideoWeb.cpp), 0 if none, and the frames it had shown when last drawn.
+
+		int _webVideoID	   = 0;
+		int _webFrameCount = 0;
+#else
 		// VLC core components
 
 		libvlc_instance_t*	   _vlcInstance = nullptr;
 		libvlc_media_player_t* _player		= nullptr;
+#endif
 
 		// Video properties
 
@@ -93,7 +103,9 @@ namespace TEN::Video
 		bool InitializeVideoTexture();
 		void DeinitializeVideoTexture();
 		void DeinitializePlayer();
+		static Color AdjustDominantColor(Vector3 color);
 
+#ifndef SDL_PLATFORM_EMSCRIPTEN
 		// VLC callbacks
 
 		static void*		OnLockFrame(void* data, void** pixels);
@@ -101,6 +113,7 @@ namespace TEN::Video
 		static void			OnLog(void* data, int level, const libvlc_log_t* ctx, const char* fmt, va_list args);
 		static unsigned int OnVideoSetup(void** data, char* chroma, unsigned* width, unsigned* height, unsigned* pitches, unsigned* lines);
 		static int			OnAudioSetup(void** data, char* format, unsigned* rate, unsigned* channels);
+#endif
 	};
 
 	extern VideoHandler g_VideoPlayer;

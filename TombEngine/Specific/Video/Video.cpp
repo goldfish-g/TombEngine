@@ -5,6 +5,7 @@
 #include "Sound/sound.h"
 #include "Specific/EngineMain.h"
 #include "Specific/Input/Input.h"
+#include "Specific/Input/TouchControls.h"
 #include "Specific/trutils.h"
 
 using namespace TEN::Input;
@@ -13,9 +14,30 @@ namespace TEN::Video
 {
 	VideoHandler g_VideoPlayer = {};
 
-	static const std::string			  VIDEO_PATH	   = "FMV/";
-	static const std::string			  VIDEO_PLUGIN_CACHE_PATH = "plugins/plugins.dat";
-	static const std::vector<std::string> VIDEO_EXTENSIONS = { ".mp4", ".avi", ".mkv", ".mov" };
+	// Lighter and greyer when dark, as the colour of light a video casts.
+	Color VideoHandler::AdjustDominantColor(Vector3 color)
+	{
+		float luma = Luma(color);
+		if (luma < 0.3f && luma > 0.0f)
+		{
+			float boostFactor = 0.3f / luma;
+			color *= boostFactor;
+			color.Clamp(Vector3::Zero, Vector3::One);
+		}
+
+		if (luma < 0.5f)
+		{
+			float desaturationFactor = (0.4f - luma) / 0.4f;
+			color.x = (color.x * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
+			color.y = (color.y * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
+			color.z = (color.z * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
+		}
+
+		return Color(color);
+	}
+
+#ifndef SDL_PLATFORM_EMSCRIPTEN
+	static const std::string VIDEO_PLUGIN_CACHE_PATH = "plugins/plugins.dat";
 
 	int VideoHandler::GetPosition() const
 	{
@@ -83,25 +105,7 @@ namespace TEN::Video
 		unsigned char avgG = (unsigned char)(accG / pixelCount);
 		unsigned char avgB = (unsigned char)(accB / pixelCount);
 
-		auto result = Vector3((float)avgR / 255.0f, (float)avgG / 255.0f, (float)avgB / 255.0f);
-
-		float luma = Luma(result);
-		if (luma < 0.3f && luma > 0.0f)
-		{
-			float boostFactor = 0.3f / luma;
-			result *= boostFactor;
-			result.Clamp(Vector3::Zero, Vector3::One);
-		}
-
-		if (luma < 0.5f)
-		{
-			float desaturationFactor = (0.4f - luma) / 0.4f;
-			result.x = (result.x * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
-			result.y = (result.y * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
-			result.z = (result.z * (1.0f - desaturationFactor)) + (luma * desaturationFactor);
-		}
-
-		return Color(result);
+		return AdjustDominantColor(Vector3((float)avgR / 255.0f, (float)avgG / 255.0f, (float)avgB / 255.0f));
 	}
 
 	bool VideoHandler::GetSilent() const
@@ -420,7 +424,7 @@ namespace TEN::Video
 		{
 			ResetClock = true;
 			UpdateInputActions(true);
-			interruptPlayback = IsHeld(In::Deselect) || IsHeld(In::Look);
+			interruptPlayback = IsHeld(In::Deselect) || IsHeld(In::Look) || IsAnyFingerDown();
 			_updateInput = _starting = false;
 		}
 
@@ -612,4 +616,5 @@ namespace TEN::Video
 
 		return 1;
 	}
+#endif
 }

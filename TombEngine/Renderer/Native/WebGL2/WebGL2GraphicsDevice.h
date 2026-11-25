@@ -78,6 +78,10 @@ namespace TEN::Renderer::Native::WebGL2
         // A texture from pixels or blocks decoded already (the sprite font's).
         std::unique_ptr<ITexture2D> CreateTexture2DFromDecoded(DecodedTexture decoded);
 
+        // Copies the frame a video of the page shows into the texture, on the GPU
+        // (see Specific/Platform/Web/VideoWeb.cpp).
+        void UpdateTexture2DFromVideo(ITexture2D* texture, int videoID);
+
         // IGraphicsDevice.
         std::unique_ptr<IVertexBuffer> CreateVertexBuffer(int numVertices, int vertexSize, void* data) override;
         void UpdateVertexBuffer(IVertexBuffer* vertexBuffer, int startVertex, int count, void* data) override;

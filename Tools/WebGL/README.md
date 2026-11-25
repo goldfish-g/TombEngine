@@ -31,8 +31,15 @@ title level). The sources are read from `TombEngine.vcxproj`.
   way: structured buffers, comparison sampling of float textures, effect-file
   samplers, Direct3D constant buffer packing.
 - **Platform** - `Specific/Platform/Web` holds the platform subsystem, a log that
-  can't deadlock the page, and the libraries with no browser build: BASS (sound),
-  libVLC (video, not playing yet) and Discord (nothing to talk to in a page).
+  can't deadlock the page, and what replaces the libraries with no browser build: a
+  mixer for BASS (sound), the browser's own `<video>` for libVLC (`VideoWeb.cpp`), and
+  nothing for Discord (nothing to talk to in a page).
+- **Videos** - play in `<video>` elements of the page (`Module.tenWebVideo` in
+  `pre.js`): the browser decodes them and plays their sound, and the engine copies
+  each frame into its video texture on the GPU, scaled down to 2048 pixels at most.
+  The page can tell the engine where a video is with `Module.tenWebVideoUrl(path)`,
+  so videos stream instead of loading into memory. Browsers play H.264 or VP9 video
+  in MP4 or WebM; Chrome also plays Matroska (`.mkv`), other browsers don't.
 - **Main loop** - `Specific/EngineMain.cpp` runs the window's events and the frames
   from the page's loop instead of its own.
 - **Files** - `pre.js` makes file names case-insensitive and accepts backslashes,
