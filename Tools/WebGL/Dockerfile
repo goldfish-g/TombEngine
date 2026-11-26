@@ -92,6 +92,26 @@ RUN git clone -q --depth 1 https://github.com/iOrange/bcdec /src/bcdec \
     && wget -q https://raw.githubusercontent.com/nothings/stb/9600522de53973336fa033a289858a4354cbb04c/stb_vorbis.c -O /ext/include/stb_vorbis.c \
     && rm -rf /src/bcdec /src/dr_libs
 
+# etcpak's ETC2/EAC encoder. Phones sample neither the PNG pictures most levels
+# hold nor their DXT5 blocks, and as pixels a level's textures fill hundreds of
+# megabytes there, so the browser build compresses them to ETC2 as they load.
+# Its SSE4.1 code runs on WebAssembly SIMD through Emscripten's <smmintrin.h>.
+# Its one- and two-channel EAC encoders skip blocks of one value, as its ETC2 alpha
+# encoder does: unused normal maps are one colour, and searching each of their
+# blocks takes seconds.
+RUN git clone -q https://github.com/wolfpld/etcpak /src/etcpak \
+    && git -C /src/etcpak checkout -q 3d716e1550023dc5ff8b602636af8b76584e0b66 \
+    && sed -i 's/ProcessAlpha_ETC2<false>( \(r\|rg\|&rg\[16\]\) )/ProcessAlpha_ETC2<true>( \1 )/' /src/etcpak/ProcessRGB.cpp \
+    && mkdir -p /tmp/etcpak/shim /ext/include/etcpak \
+    && printf '#include <smmintrin.h>\n' > /tmp/etcpak/shim/x86intrin.h \
+    && for f in ProcessRGB Tables Dither; do \
+        em++ -O3 ${TEN_WEB_FLAGS} -msse4.1 -DNDEBUG -w -I/tmp/etcpak/shim -c /src/etcpak/$f.cpp -o /tmp/etcpak/$f.o; \
+    done \
+    && emar rcs /ext/lib/libetcpak.a /tmp/etcpak/*.o \
+    && cp /src/etcpak/ProcessRGB.hpp /src/etcpak/LICENSE.txt /ext/include/etcpak/ \
+    && git -C /src/etcpak log -1 --format='etcpak %H' >> /ext/include/stb.version \
+    && rm -rf /src/etcpak /tmp/etcpak
+
 # Shader tools: DXC turns HLSL into SPIR-V, SPIRV-Cross turns that into GLSL ES 3.00.
 # They run on the build machine, so they are built without the browser flags above.
 RUN wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/linux_dxc_2026_09_28.x86_x64.tar.gz -O /tmp/dxc.tgz \

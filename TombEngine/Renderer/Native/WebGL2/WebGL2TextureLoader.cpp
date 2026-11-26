@@ -10,6 +10,10 @@
 #define BCDEC_IMPLEMENTATION
 #include <bcdec.h>
 
+#include <etcpak/ProcessRGB.hpp>
+#include <functional>
+#include <thread>
+
 namespace TEN::Renderer::Native::WebGL2
 {
     // Compressed formats of the WEBGL_compressed_texture_s3tc(_srgb),
@@ -521,15 +525,258 @@ namespace TEN::Renderer::Native::WebGL2
         return texture;
     }
 
+    // Phones sample neither the PNG pictures most levels hold nor their DXT5 blocks,
+    // and as pixels the textures of a level fill hundreds of megabytes there. So
+    // where the browser takes ETC2 but not S3TC (phones), textures are compressed to
+    // ETC2 as they load: without alpha when they have none, EAC for one or two
+    // channels, mipmaps included. Desktops keep them as the Windows build does.
+    //
+    // Small textures stay as they are: they take little memory.
+    constexpr int ETC2_MIN_PIXELS = 128 * 128;
+
+    // Runs work(begin, end) over [0, count) on up to 8 threads, each given at least minimum.
+    static void ParallelFor(int count, int minimum, const std::function<void(int, int)>& work)
+    {
+        int threadCount = std::clamp((int)std::thread::hardware_concurrency() - 1, 1, 8);
+        threadCount = std::min(threadCount, count / std::max(minimum, 1));
+        if (threadCount <= 1)
+        {
+            work(0, count);
+            return;
+        }
+
+        auto threads = std::vector<std::thread>{};
+        int perThread = (count + threadCount - 1) / threadCount;
+        for (int begin = 0; begin < count; begin += perThread)
+            threads.emplace_back(work, begin, std::min(begin + perThread, count));
+
+        for (auto& thread : threads)
+            thread.join();
+    }
+
+    // sRGB colours to linear light (0-65535), and back from linear light / 16.
+    static const std::array<uint16_t, 256>& GetSrgbToLinear()
+    {
+        static const auto table = []()
+        {
+            auto result = std::array<uint16_t, 256>{};
+            for (int i = 0; i < 256; i++)
+            {
+                float value = i / 255.0f;
+                value = (value <= 0.04045f) ? value / 12.92f : std::pow((value + 0.055f) / 1.055f, 2.4f);
+                result[i] = (uint16_t)std::lround(value * 65535.0f);
+            }
+
+            return result;
+        }();
+
+        return table;
+    }
+
+    static const std::array<uint8_t, 4096>& GetLinearToSrgb()
+    {
+        static const auto table = []()
+        {
+            auto result = std::array<uint8_t, 4096>{};
+            for (int i = 0; i < 4096; i++)
+            {
+                float value = i / 4095.0f;
+                value = (value <= 0.0031308f) ? value * 12.92f : 1.055f * std::pow(value, 1.0f / 2.4f) - 0.055f;
+                result[i] = (uint8_t)std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f);
+            }
+
+            return result;
+        }();
+
+        return table;
+    }
+
+    // The next mip level, as glGenerateMipmap makes it: each pixel the average of the
+    // pixels it covers, in linear light for sRGB colours.
+    static TextureLevel Downsample(const TextureLevel& level, int channels, bool srgb)
+    {
+        auto result = TextureLevel{};
+        result.Width = std::max(level.Width / 2, 1);
+        result.Height = std::max(level.Height / 2, 1);
+        result.Data.resize((size_t)result.Width * result.Height * channels);
+
+        const auto& toLinear = GetSrgbToLinear();
+        const auto& toSrgb = GetLinearToSrgb();
+
+        // A side of one pixel is averaged with itself.
+        int stepX = (level.Width > 1) ? channels : 0;
+        size_t stepY = (level.Height > 1) ? (size_t)level.Width * channels : 0;
+        int spanX = (level.Width > 1) ? 2 : 1;
+        int spanY = (level.Height > 1) ? 2 : 1;
+
+        ParallelFor(result.Height, 64, [&](int begin, int end)
+        {
+            for (int y = begin; y < end; y++)
+            {
+                const auto* row = &level.Data[(size_t)y * spanY * level.Width * channels];
+                auto* output = &result.Data[(size_t)y * result.Width * channels];
+
+                for (int x = 0; x < result.Width; x++)
+                {
+                    const auto* p = row + (size_t)x * spanX * channels;
+                    for (int c = 0; c < channels; c++, output++)
+                    {
+                        if (srgb && c < 3)
+                        {
+                            unsigned int sum = toLinear[p[c]] + toLinear[p[c + stepX]] + toLinear[p[c + stepY]] + toLinear[p[c + stepY + stepX]];
+                            *output = toSrgb[(sum / 4) >> 4];
+                        }
+                        else
+                        {
+                            unsigned int sum = p[c] + p[c + stepX] + p[c + stepY] + p[c + stepY + stepX];
+                            *output = (unsigned char)((sum + 2) / 4);
+                        }
+                    }
+                }
+            }
+        });
+
+        return result;
+    }
+
+    // Encodes a level in rows of 4x4 blocks, shared out between threads.
+    static TextureLevel EncodeEtc2Level(const TextureLevel& level, int channels, GLenum format)
+    {
+        // etcpak reads whole blocks of BGRA pixels; edge blocks repeat the last pixels.
+        int paddedWidth = (level.Width + 3) & ~3;
+        int paddedHeight = (level.Height + 3) & ~3;
+        auto pixels = std::vector<uint32_t>((size_t)paddedWidth * paddedHeight);
+        ParallelFor(paddedHeight, 256, [&](int begin, int end)
+        {
+            for (int y = begin; y < end; y++)
+            {
+                int sourceY = std::min(y, level.Height - 1);
+                for (int x = 0; x < paddedWidth; x++)
+                {
+                    const auto* source = &level.Data[((size_t)sourceY * level.Width + std::min(x, level.Width - 1)) * channels];
+                    uint32_t r = source[0];
+                    uint32_t g = (channels > 1) ? source[1] : 0;
+                    uint32_t b = (channels > 2) ? source[2] : 0;
+                    uint32_t a = (channels > 3) ? source[3] : 255;
+                    pixels[(size_t)y * paddedWidth + x] = b | (g << 8) | (r << 16) | (a << 24);
+                }
+            }
+        });
+
+        int blocksX = paddedWidth / 4;
+        int blocksY = paddedHeight / 4;
+        int blockBytes = (format == GL_COMPRESSED_RGBA8_ETC2_EAC || format == GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC ||
+                          format == GL_COMPRESSED_RG11_EAC) ? 16 : 8;
+
+        auto result = TextureLevel{};
+        result.Width = level.Width;
+        result.Height = level.Height;
+        result.Data.resize((size_t)blocksX * blocksY * blockBytes);
+
+        auto encodeRows = [&](int firstRow, int rowCount)
+        {
+            const auto* source = pixels.data() + (size_t)firstRow * 4 * paddedWidth;
+            auto* destination = (uint64_t*)(result.Data.data() + (size_t)firstRow * blocksX * blockBytes);
+            auto blocks = (uint32_t)(rowCount * blocksX);
+
+            switch (format)
+            {
+            case GL_COMPRESSED_R11_EAC:
+                CompressEacR(source, destination, blocks, paddedWidth);
+                break;
+
+            case GL_COMPRESSED_RG11_EAC:
+                CompressEacRg(source, destination, blocks, paddedWidth);
+                break;
+
+            case GL_COMPRESSED_RGB8_ETC2:
+            case GL_COMPRESSED_SRGB8_ETC2:
+                CompressEtc2Rgb(source, destination, blocks, paddedWidth, true);
+                break;
+
+            default:
+                CompressEtc2Rgba(source, destination, blocks, paddedWidth, true);
+                break;
+            }
+        };
+
+        // Small levels aren't worth a thread.
+        ParallelFor(blocksY, std::max(1, 4096 / blocksX), [&](int begin, int end) { encodeRows(begin, end - begin); });
+        return result;
+    }
+
+    static void CompressForPhone(DecodedTexture& texture, const TextureCapabilities& capabilities)
+    {
+        if (!capabilities.Etc2 || capabilities.S3tc || !texture.Valid || texture.Compressed ||
+            texture.Type != GL_UNSIGNED_BYTE || texture.Levels.empty())
+        {
+            return;
+        }
+
+        int channels = (texture.Format == GL_RGBA) ? 4 : (texture.Format == GL_RG) ? 2 : (texture.Format == GL_RED) ? 1 : 0;
+        int baseWidth = texture.Levels[0].Width;
+        int baseHeight = texture.Levels[0].Height;
+        if (channels == 0 || baseWidth * baseHeight < ETC2_MIN_PIXELS)
+            return;
+
+        for (const auto& level : texture.Levels)
+        {
+            if (level.Data.size() < (size_t)level.Width * level.Height * channels)
+                return;
+        }
+
+        bool opaque = true;
+        if (channels == 4)
+        {
+            const auto& pixels = texture.Levels[0].Data;
+            for (size_t i = 3; i < pixels.size() && opaque; i += 4)
+                opaque = (pixels[i] == 255);
+        }
+
+        bool srgb = (texture.InternalFormat == GL_SRGB8_ALPHA8);
+        GLenum format = GL_COMPRESSED_R11_EAC;
+        if (channels == 2)
+            format = GL_COMPRESSED_RG11_EAC;
+        else if (channels == 4 && opaque)
+            format = srgb ? GL_COMPRESSED_SRGB8_ETC2 : GL_COMPRESSED_RGB8_ETC2;
+        else if (channels == 4)
+            format = srgb ? GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC : GL_COMPRESSED_RGBA8_ETC2_EAC;
+
+        auto start = std::chrono::steady_clock::now();
+
+        if (texture.GenerateMips)
+        {
+            while (texture.Levels.back().Width > 1 || texture.Levels.back().Height > 1)
+                texture.Levels.push_back(Downsample(texture.Levels.back(), channels, srgb));
+        }
+
+        auto mipmapped = std::chrono::steady_clock::now();
+
+        for (auto& level : texture.Levels)
+            level = EncodeEtc2Level(level, channels, format);
+
+        texture.Compressed = true;
+        texture.GenerateMips = false;
+        texture.InternalFormat = format;
+
+        if (baseWidth * baseHeight >= 1024 * 1024)
+        {
+            auto now = std::chrono::steady_clock::now();
+            auto mipTime = std::chrono::duration_cast<std::chrono::milliseconds>(mipmapped - start).count();
+            auto encodeTime = std::chrono::duration_cast<std::chrono::milliseconds>(now - mipmapped).count();
+            TENLog(fmt::format("Compressed a {}x{} texture to {} in {} ms (mipmaps {} ms).", texture.Width, texture.Height,
+                (channels < 4) ? "EAC" : (opaque ? "ETC2" : "ETC2 with alpha"), mipTime + encodeTime, mipTime), LogLevel::Info);
+        }
+    }
+
     DecodedTexture DecodeTextureFile(const unsigned char* data, int size, const TextureCapabilities& capabilities)
     {
         if (data == nullptr || size < 4)
             return {};
 
-        if (!memcmp(data, "DDS ", 4))
-            return DecodeDds(data, size, capabilities);
-
-        return DecodePicture(data, size);
+        auto texture = !memcmp(data, "DDS ", 4) ? DecodeDds(data, size, capabilities) : DecodePicture(data, size);
+        CompressForPhone(texture, capabilities);
+        return texture;
     }
 
     DecodedTexture DecodeDxgiPixels(int dxgiFormat, int width, int height, int stride, int rows,

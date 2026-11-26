@@ -30,6 +30,12 @@ title level). The sources are read from `TombEngine.vcxproj`.
   use the engine's. A few Direct3D features GLSL ES lacks are rewritten on the
   way: structured buffers, comparison sampling of float textures, effect-file
   samplers, Direct3D constant buffer packing.
+- **Textures** - `WebGL2TextureLoader.cpp` reads DDS files and pictures as DirectXTK
+  does on Windows, and decodes block formats the browser can't sample. Phones
+  sample neither the PNG pictures most levels hold nor their DXT5 blocks, and as
+  pixels a level's textures fill hundreds of megabytes there, so where the browser
+  takes ETC2 but not S3TC the loader compresses them to ETC2/EAC (etcpak) as they
+  load, mipmaps included. Desktops keep them as the Windows build does.
 - **Constant buffer size** - Direct3D 11 takes constant buffers of 64 KB, WebGL 2
   devices as little as 16 KB (iPhones and most Macs). On those, the arrays the
   largest buffers end with (objects, sprites) are declared shorter when the

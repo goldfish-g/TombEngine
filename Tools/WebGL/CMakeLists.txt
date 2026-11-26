@@ -100,7 +100,7 @@ add_dependencies(TombEngine StockShaders)
 set_target_properties(TombEngine PROPERTIES LINK_DEPENDS "${STOCK_SHADERS};${CMAKE_CURRENT_SOURCE_DIR}/pre.js")
 
 target_link_directories(TombEngine PRIVATE "${EXT}/lib")
-target_link_libraries(TombEngine PRIVATE SDL3 lua lz4)
+target_link_libraries(TombEngine PRIVATE SDL3 lua lz4 etcpak)
 target_link_options(TombEngine PRIVATE
     ${TEN_WEB_FLAGS}
     # The link optimizes as the compile does: without it, Emscripten skips Binaryen's

@@ -1068,6 +1068,9 @@ namespace TEN::Renderer::Native::WebGL2
             _textureCapabilities.Bptc = emscripten_webgl_enable_extension(context, "EXT_texture_compression_bptc");
         }
 
+        // Phones take ETC2 instead (see CompressForPhone() in WebGL2TextureLoader.cpp).
+        _textureCapabilities.Etc2 = emscripten_webgl_enable_extension(context, "WEBGL_compressed_texture_etc");
+
         if (emscripten_webgl_enable_extension(context, "EXT_texture_filter_anisotropic"))
             glGetFloatv(MAX_TEXTURE_MAX_ANISOTROPY, &_maxAnisotropy);
 
@@ -1088,8 +1091,8 @@ namespace TEN::Renderer::Native::WebGL2
         _shaders.SetMaxBlockSize(_maxBlockSize);
 
         TENLog("WebGL renderer: " + _adapterInfo.Name, LogLevel::Info);
-        TENLog(fmt::format("WebGL features: float targets {}, float filtering {}, S3TC {}, RGTC {}, BPTC {}, anisotropy {}, uniform block size {}",
-            _floatRenderable, _floatLinear, _textureCapabilities.S3tc, _textureCapabilities.Rgtc, _textureCapabilities.Bptc,
+        TENLog(fmt::format("WebGL features: float targets {}, float filtering {}, S3TC {}, RGTC {}, BPTC {}, ETC2 {}, anisotropy {}, uniform block size {}",
+            _floatRenderable, _floatLinear, _textureCapabilities.S3tc, _textureCapabilities.Rgtc, _textureCapabilities.Bptc, _textureCapabilities.Etc2,
             _maxAnisotropy, maxBlockSize), LogLevel::Info);
 
         _executor.Initialize(&_shaders, _floatLinear, _maxAnisotropy);

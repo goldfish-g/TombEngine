@@ -13,6 +13,7 @@ namespace TEN::Renderer::Native::WebGL2
         bool S3tcSrgb = false;
         bool Rgtc	  = false;
         bool Bptc	  = false;
+        bool Etc2	  = false;
     };
 
     struct TextureLevel
