@@ -298,6 +298,38 @@ namespace TEN::Renderer
 		int gunShellCount = 0;
 		int objectID = 0;
 
+		// Draws the shells gathered so far: as many at a time as the objects buffer holds.
+		auto drawGunShells = [&]()
+		{
+			auto& moveableObject = *_moveableObjects[objectID];
+
+			_shaders.Bind(Shader::InstancedStatics);
+
+			_graphicsDevice->BindVertexBuffer(_moveablesVertexBuffer.get());
+			_graphicsDevice->BindIndexBuffer(_moveablesIndexBuffer.get());
+
+			SetBlendMode(BlendMode::Opaque);
+			SetAlphaTest(AlphaTestMode::GreatherThan, ALPHA_TEST_THRESHOLD);
+
+            UpdateConstantBuffer(&_stObjects, _cbObjects.get(), GetObjectsBufferPrefixSize(gunShellCount));
+
+			const auto& mesh = *moveableObject.ObjectMeshes[0];
+			for (const auto& bucket : mesh.Buckets)
+			{
+				if (bucket.NumVertices == 0)
+					continue;
+
+				BindBucketTextures(bucket, TextureSource::Moveables, false);
+				BindMaterial(bucket.MaterialIndex, false);
+
+				DrawIndexedInstancedTriangles(bucket.NumIndices, gunShellCount, bucket.StartIndex, 0);
+
+				_numInstancedStaticsDrawCalls++;
+			}
+
+			gunShellCount = 0;
+		};
+
 		for (int i = 0; i < MAX_GUNSHELL; i++)
 		{
 			auto* gunshell = &Gunshells[i];
@@ -334,36 +366,13 @@ namespace TEN::Renderer
 			BindInstancedStaticLights(item->LightsToDraw, gunShellCount);
 
 			gunShellCount++;
+
+			if (gunShellCount == _staticMeshBucketSize)
+				drawGunShells();
 		}
 
 		if (gunShellCount > 0)
-		{
-			auto& moveableObject = *_moveableObjects[objectID];
-
-			_shaders.Bind(Shader::InstancedStatics);
-
-			_graphicsDevice->BindVertexBuffer(_moveablesVertexBuffer.get());
-			_graphicsDevice->BindIndexBuffer(_moveablesIndexBuffer.get());
-
-			SetBlendMode(BlendMode::Opaque);
-			SetAlphaTest(AlphaTestMode::GreatherThan, ALPHA_TEST_THRESHOLD);
-
-            UpdateConstantBuffer(&_stObjects, _cbObjects.get(), GetObjectsBufferPrefixSize(gunShellCount));
-
-			const auto& mesh = *moveableObject.ObjectMeshes[0];
-			for (const auto& bucket : mesh.Buckets)
-			{
-				if (bucket.NumVertices == 0)
-					continue;
-
-				BindBucketTextures(bucket, TextureSource::Moveables, false);
-				BindMaterial(bucket.MaterialIndex, false);
-
-				DrawIndexedInstancedTriangles(bucket.NumIndices, gunShellCount, bucket.StartIndex, 0);
-
-				_numInstancedStaticsDrawCalls++;
-			}
-		}
+			drawGunShells();
 	}
 
 	void Renderer::PrepareRopes(RenderView& view)
@@ -908,9 +917,9 @@ namespace TEN::Renderer
 					const auto& cluster = clusters[c];
 					const auto& mesh = *GetMesh(Objects[cluster.ObjectID].meshIndex + cluster.MeshIndex);
 
-					for (int baseIndex = 0; baseIndex < (int)cluster.Particles.size(); baseIndex += INSTANCED_STATIC_MESH_BUCKET_SIZE)
+					for (int baseIndex = 0; baseIndex < (int)cluster.Particles.size(); baseIndex += _staticMeshBucketSize)
 					{
-						int instanceCount = std::min((int)cluster.Particles.size() - baseIndex, INSTANCED_STATIC_MESH_BUCKET_SIZE);
+						int instanceCount = std::min((int)cluster.Particles.size() - baseIndex, _staticMeshBucketSize);
 
 						for (int i = 0; i < instanceCount; i++)
 						{
@@ -1035,7 +1044,7 @@ namespace TEN::Renderer
 					batCount++;
 				}
 
-				if (batCount == INSTANCED_STATIC_MESH_BUCKET_SIZE ||
+				if (batCount == _staticMeshBucketSize ||
 					(i == (NUM_BATS - 1) && batCount > 0))
 				{
 					if (rendererPass == RendererPass::GBuffer)
@@ -1335,7 +1344,7 @@ namespace TEN::Renderer
 					beetleCount++;
 				}
 
-				if (beetleCount == INSTANCED_STATIC_MESH_BUCKET_SIZE || 
+				if (beetleCount == _staticMeshBucketSize || 
 					(i == TEN::Entities::TR4::NUM_BEETLES - 1 && beetleCount > 0))
 				{
 					if (rendererPass == RendererPass::GBuffer)
@@ -3135,7 +3144,7 @@ namespace TEN::Renderer
                     continue;
 
 				int staticsCount = (int)statics.size();
-				int bucketSize = INSTANCED_STATIC_MESH_BUCKET_SIZE;
+				int bucketSize = _staticMeshBucketSize;
 				int baseStaticIndex = 0;
 
 				while (baseStaticIndex < staticsCount)
@@ -3540,8 +3549,8 @@ namespace TEN::Renderer
 			while (drawnStars < starCount)
 			{
 				int starsToDraw =
-					(starCount - drawnStars) > INSTANCED_SPRITES_BUCKET_SIZE ? 
-					INSTANCED_SPRITES_BUCKET_SIZE : 
+					(starCount - drawnStars) > _spriteBucketSize ? 
+					_spriteBucketSize : 
 					(starCount - drawnStars);
 				int i = 0;
 
@@ -3600,8 +3609,8 @@ namespace TEN::Renderer
 				while (drawnMeteors < meteorsCount)
 				{
 					int meteorsToDraw =
-						(meteorsCount - drawnMeteors) > INSTANCED_SPRITES_BUCKET_SIZE ?
-						INSTANCED_SPRITES_BUCKET_SIZE :
+						(meteorsCount - drawnMeteors) > _spriteBucketSize ?
+						_spriteBucketSize :
 						(meteorsCount - drawnMeteors);
 					int i = 0;
 

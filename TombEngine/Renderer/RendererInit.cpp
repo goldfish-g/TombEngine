@@ -414,6 +414,11 @@ namespace TEN::Renderer
 #endif
 		_graphicsDevice->CreateDevice();
 
+		// Instanced draws in batches the device's constant buffers can hold.
+		int maxBufferSize = _graphicsDevice->GetMaxConstantBufferSize();
+		_staticMeshBucketSize = std::clamp((maxBufferSize - (int)offsetof(CObjectsBuffer, Objects)) / (int)sizeof(ObjectData), 1, INSTANCED_STATIC_MESH_BUCKET_SIZE);
+		_spriteBucketSize = std::clamp(maxBufferSize / (int)sizeof(InstancedSprite), 1, INSTANCED_SPRITES_BUCKET_SIZE);
+
 		// Populate adapter info and store in VRAM tracker.
 		_adapterInfo = _graphicsDevice->GetAdapterInfo();
 		Graphics::VRAMTracker::Get().SetAdapterInfo(_adapterInfo);

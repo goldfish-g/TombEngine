@@ -1082,6 +1082,11 @@ namespace TEN::Renderer::Native::WebGL2
         GLint maxBlockSize = 0;
         glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxBlockSize);
 
+        // WebGL 2 promises 16 KB. Larger constant buffers of the engine have their arrays
+        // shortened to fit (see WebGL2ShaderLibrary.cpp) and are drawn in smaller batches.
+        _maxBlockSize = std::max(maxBlockSize, 16384);
+        _shaders.SetMaxBlockSize(_maxBlockSize);
+
         TENLog("WebGL renderer: " + _adapterInfo.Name, LogLevel::Info);
         TENLog(fmt::format("WebGL features: float targets {}, float filtering {}, S3TC {}, RGTC {}, BPTC {}, anisotropy {}, uniform block size {}",
             _floatRenderable, _floatLinear, _textureCapabilities.S3tc, _textureCapabilities.Rgtc, _textureCapabilities.Bptc,
@@ -1305,6 +1310,11 @@ namespace TEN::Renderer::Native::WebGL2
     int WebGL2GraphicsDevice::GetScreenHeight()
     {
         return _screenHeight;
+    }
+
+    int WebGL2GraphicsDevice::GetMaxConstantBufferSize()
+    {
+        return _maxBlockSize;
     }
 }
 

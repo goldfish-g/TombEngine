@@ -51,6 +51,15 @@ namespace TEN::Renderer::Native::WebGL2
         int			Location = 0;
     };
 
+    // The array a uniform block ends with, cut short to fit the device (see Load()).
+    struct ShortenedArray
+    {
+        std::string Block  = {};
+        std::string Member = {};
+        int			Count  = 0;
+        int			Length = 0;
+    };
+
     struct ShaderStageInfo
     {
         std::string				  Key			  = {};
@@ -60,6 +69,7 @@ namespace TEN::Renderer::Native::WebGL2
         std::vector<StageBlock>	  Blocks		  = {};
         std::vector<StageTexture> Textures		  = {};
         std::vector<StageInput>	  Inputs		  = {};
+        std::vector<ShortenedArray> Shortened  = {};
         unsigned int			  OutputMask	  = 0; // Render targets a pixel stage writes.
 
         // Main thread only.
@@ -109,6 +119,7 @@ namespace TEN::Renderer::Native::WebGL2
         std::vector<SamplerStateInfo> _samplerStates		   = {};
         int							  _dataTextureWidth		   = 2048;
         int							  _smaaMetricsRegister	   = 12;
+        int							  _maxBlockSize			   = 65536;
         bool						  _loaded				   = false;
 
         // Main thread only.
@@ -118,6 +129,9 @@ namespace TEN::Renderer::Native::WebGL2
         bool CompileStage(ShaderStageInfo& stage);
 
     public:
+        // Largest uniform block the device takes, in bytes. Set before Load().
+        void SetMaxBlockSize(int size) { _maxBlockSize = size; }
+
         // Reads the manifest. Any thread; called once before shaders are created.
         bool Load(const std::string& path);
         bool IsLoaded() const { return _loaded; }

@@ -142,6 +142,10 @@ namespace TEN::Renderer::Graphics
 		virtual int GetScreenWidth() = 0;
 		virtual int GetScreenHeight() = 0;
 
+		// Largest constant buffer shaders can read, in bytes: 64 KB in Direct3D 11, and
+		// in WebGL 2 down to 16 KB on some devices. Instanced draws are batched to fit.
+		virtual int GetMaxConstantBufferSize() { return 65536; }
+
 		virtual ~IGraphicsDevice() = default;
 	};
 }

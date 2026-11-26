@@ -30,6 +30,23 @@ namespace TEN::Renderer::Native::WebGL2
         return GL_CLAMP_TO_EDGE;
     }
 
+    // Declares the array of a uniform block shorter in a stage's GLSL.
+    static void ShortenArray(std::string& glsl, const ShortenedArray& array)
+    {
+        auto start = glsl.find("uniform " + array.Block);
+        auto open = (start != std::string::npos) ? glsl.find('{', start) : std::string::npos;
+        auto close = (open != std::string::npos) ? glsl.find('}', open) : std::string::npos;
+        auto declaration = " " + array.Member + "[" + std::to_string(array.Count) + "];";
+        auto at = (close != std::string::npos) ? glsl.find(declaration, open) : std::string::npos;
+        if (at == std::string::npos || at > close)
+        {
+            TENLog("WebGL shader array " + array.Block + "." + array.Member + " not found to shorten.", LogLevel::Warning);
+            return;
+        }
+
+        glsl.replace(at, declaration.size(), " " + array.Member + "[" + std::to_string(array.Length) + "];");
+    }
+
     std::string MakeShaderKey(const std::string& fileName, const std::string& stage, const std::string& entryPoint,
                               const std::map<std::string, std::string>& macros)
     {
@@ -167,6 +184,42 @@ namespace TEN::Renderer::Native::WebGL2
                     layout.Copies.push_back(copy);
                 }
 
+                // The array the block ends with: name, offset, stride and length.
+                auto array = ShortenedArray{ layout.Name };
+                int arrayOffset = 0;
+                int arrayStride = 0;
+                bool hasArray = (bool)(stream >> array.Member >> arrayOffset >> arrayStride >> array.Count) && arrayStride > 0;
+
+                if (layout.Size > _maxBlockSize)
+                {
+                    // Too large for the device: the block would not link. The array keeps
+                    // the elements that fit, and the engine draws in batches that small
+                    // (see IGraphicsDevice::GetMaxConstantBufferSize()).
+                    array.Length = hasArray ? (_maxBlockSize - arrayOffset) / arrayStride : 0;
+                    if (array.Length > 0 && array.Length < array.Count)
+                    {
+                        layout.Size = arrayOffset + array.Length * arrayStride;
+
+                        auto copies = std::vector<BlockCopy>{};
+                        for (auto copy : layout.Copies)
+                        {
+                            if (copy.Destination >= layout.Size)
+                                continue;
+
+                            copy.Size = std::min(copy.Size, layout.Size - copy.Destination);
+                            copies.push_back(copy);
+                        }
+
+                        layout.Copies = std::move(copies);
+                        stage->Shortened.push_back(array);
+                    }
+                    else
+                    {
+                        TENLog(fmt::format("WebGL constant buffer {} ({} bytes) is larger than this device takes ({} bytes).",
+                            layout.Name, layout.Size, _maxBlockSize), LogLevel::Warning);
+                    }
+                }
+
                 stage->Blocks.push_back(StageBlock{ AddLayout(std::move(layout)), reg });
             }
             else if (keyword == "texture")
@@ -190,6 +243,9 @@ namespace TEN::Renderer::Native::WebGL2
                 stage->Glsl = content.substr(position, size);
                 position = std::min(position + size, (int)content.size());
 
+                for (const auto& array : stage->Shortened)
+                    ShortenArray(stage->Glsl, array);
+
                 // Direct3D leaves render targets a shader doesn't write alone; WebGL
                 // refuses to draw to them, so their draw buffers are switched off.
                 auto outputs = std::regex("layout\\(location = ([0-9]+)\\) out ");
@@ -197,6 +253,16 @@ namespace TEN::Renderer::Native::WebGL2
                     stage->OutputMask |= 1u << std::stoi((*it)[1].str());
             }
         }
+
+        auto shortened = std::set<std::string>{};
+        for (const auto& [key, loaded] : _stages)
+        {
+            for (const auto& array : loaded->Shortened)
+                shortened.insert(fmt::format("{}.{} {} -> {}", array.Block, array.Member, array.Count, array.Length));
+        }
+
+        for (const auto& line : shortened)
+            TENLog("WebGL uniform blocks up to " + std::to_string(_maxBlockSize) + " bytes: " + line, LogLevel::Info);
 
         TENLog("Loaded " + std::to_string(_stages.size()) + " WebGL shaders from " + path, LogLevel::Info);
         _loaded = true;
@@ -298,6 +364,14 @@ namespace TEN::Renderer::Native::WebGL2
                 auto index = glGetUniformBlockIndex(id, block.Layout->Name.c_str());
                 if (index == GL_INVALID_INDEX)
                     continue;
+
+                GLint dataSize = 0;
+                glGetActiveUniformBlockiv(id, index, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
+                if (dataSize > _maxBlockSize)
+                {
+                    TENLog(fmt::format("WebGL program {} + {}: block {} is {} bytes, more than the device's {}.",
+                        vertex->Key, pixel->Key, block.Layout->Name, dataSize, _maxBlockSize), LogLevel::Warning);
+                }
 
                 glUniformBlockBinding(id, index, block.Register);
                 result->Blocks.push_back(ProgramBlock{ block.Layout, block.Register, stageIndex });

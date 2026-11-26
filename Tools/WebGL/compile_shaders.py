@@ -377,6 +377,22 @@ def layout_copies(dx_types, dx_type, gl_types, gl_type):
     return copies
 
 
+def last_array(types, type_name):
+    """The array a block ends with, as (name, offset, stride, length), or None.
+
+    WebGL 2 devices may take uniform blocks of only 16 KB. The engine cuts this
+    array short on them, and draws in batches that fit.
+    """
+    members = types[type_name]["members"]
+    if not members:
+        return None
+    last = max(members, key=lambda m: m["offset"])
+    dims = last.get("array", [])
+    if len(dims) != 1 or not last.get("array_size_is_literal", [True])[0] or not last.get("array_stride"):
+        return None
+    return (last["name"], last["offset"], last["array_stride"], dims[0])
+
+
 def split_semantic(name):
     m = re.match(r"(.*?)(\d*)$", name)
     return m.group(1), int(m.group(2) or 0)
@@ -461,6 +477,7 @@ def compile_stage(work_dir, temp_dir, file_name, stage, entry, defines, smaa):
             "register": ubo["binding"] - B_SHIFT,
             "size": ubo["block_size"],
             "copies": layout_copies(reflections["dx"]["types"], dx_ubo["type"], reflection["types"], ubo["type"]),
+            "array": last_array(reflection["types"], ubo["type"]),
         })
 
     images = reflection.get("separate_images", [])
@@ -564,7 +581,11 @@ def write_manifest(manifest, path):
         lines = ["shader %s" % key, "smaa %d" % (1 if shader["smaaMetrics"] else 0)]
         for ubo in shader["ubos"]:
             copies = " ".join("%d %d %d" % tuple(c) for c in ubo["copies"])
-            lines.append("ubo %s %d %d %d %s" % (ubo["block"], ubo["register"], ubo["size"], len(ubo["copies"]), copies))
+            line = "ubo %s %d %d %d %s" % (ubo["block"], ubo["register"], ubo["size"], len(ubo["copies"]), copies)
+            if ubo["array"]:
+                # After the copies, where readers that don't know it stop reading.
+                line += " %s %d %d %d" % ubo["array"]
+            lines.append(line)
         for texture in shader["textures"]:
             lines.append("texture %s %s %d %d" % (texture["uniform"], texture["type"], texture["t"], texture["s"]))
         for attribute in shader["inputs"]:

@@ -140,6 +140,11 @@ namespace TEN::Renderer
 		std::unique_ptr<IConstantBuffer> _cbPostProcessBuffer;
 		CInstancedSpriteBuffer _stInstancedSpriteBuffer;
 		std::unique_ptr<IConstantBuffer> _cbInstancedSpriteBuffer;
+
+		// Instances per draw, as many as the device's constant buffers hold (see Create()).
+		int _staticMeshBucketSize = INSTANCED_STATIC_MESH_BUCKET_SIZE;
+		int _spriteBucketSize	  = INSTANCED_SPRITES_BUCKET_SIZE;
+
 		CPerDrawBuffer _stPerDraw;
 		std::unique_ptr<IConstantBuffer> _cbPerDraw;
 		bool _perDrawBufferDirty = true;

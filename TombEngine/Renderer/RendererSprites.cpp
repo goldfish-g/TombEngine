@@ -219,7 +219,7 @@ namespace TEN::Renderer
 				rDrawSprite.BlendMode != currentSpriteBucket.BlendMode ||
 				rDrawSprite.SoftParticle != currentSpriteBucket.IsSoftParticle ||
 				rDrawSprite.renderType != currentSpriteBucket.RenderType ||
-				currentSpriteBucket.SpritesToDraw.size() == INSTANCED_SPRITES_BUCKET_SIZE ||
+				currentSpriteBucket.SpritesToDraw.size() == _spriteBucketSize ||
 				isBillboard != currentSpriteBucket.IsBillboard)
 			{
 				_spriteBuckets.push_back(currentSpriteBucket);

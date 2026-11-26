@@ -41,6 +41,7 @@ namespace TEN::Renderer::Native::WebGL2
         int			   _screenWidth	  = 0;
         int			   _screenHeight  = 0;
         int			   _refreshRate	  = 60;
+        int			   _maxBlockSize  = 16384;
         Viewport	   _viewportToolkit = {};
         NativeTexture* _backBuffer	  = nullptr;
 
@@ -174,6 +175,7 @@ namespace TEN::Renderer::Native::WebGL2
 
         int GetScreenWidth() override;
         int GetScreenHeight() override;
+        int GetMaxConstantBufferSize() override;
     };
 
     // Called by the page's main loop (see Specific/EngineMain.cpp).

@@ -30,6 +30,11 @@ title level). The sources are read from `TombEngine.vcxproj`.
   use the engine's. A few Direct3D features GLSL ES lacks are rewritten on the
   way: structured buffers, comparison sampling of float textures, effect-file
   samplers, Direct3D constant buffer packing.
+- **Constant buffer size** - Direct3D 11 takes constant buffers of 64 KB, WebGL 2
+  devices as little as 16 KB (iPhones and most Macs). On those, the arrays the
+  largest buffers end with (objects, sprites) are declared shorter when the
+  shaders load, and the renderer draws instanced statics and sprites in batches
+  that fit (`IGraphicsDevice::GetMaxConstantBufferSize()`).
 - **Platform** - `Specific/Platform/Web` holds the platform subsystem, a log that
   can't deadlock the page, and what replaces the libraries with no browser build: a
   mixer for BASS (sound), the browser's own `<video>` for libVLC (`VideoWeb.cpp`), and
