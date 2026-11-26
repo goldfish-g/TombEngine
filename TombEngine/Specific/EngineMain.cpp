@@ -499,6 +499,13 @@ int main(int argc, char* argv[])
 
 	g_Platform->SetSDL3Window(sdlWindow);
 
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+	// The page sizes the canvas, and SDL takes its size as the window's. The engine draws
+	// at that size from the start, not at the screen's: a picture of another shape would
+	// be letterboxed in the canvas, where touches would miss the controls drawn on it.
+	SDL_GetWindowSizeInPixels(sdlWindow, &g_Configuration.ScreenWidth, &g_Configuration.ScreenHeight);
+#endif
+
 	try
 	{
 		// Initialize audio (should be called prior to initializing renderer, because video handler needs it).
