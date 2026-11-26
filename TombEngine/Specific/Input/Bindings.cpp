@@ -3,6 +3,7 @@
 
 #include "Specific/Input/InputAction.h"
 #include "Specific/Input/Keys.h"
+#include "Specific/Input/TouchControls.h"
 
 namespace TEN::Input
 {
@@ -292,6 +293,14 @@ namespace TEN::Input
 
 	const std::string& BindingManager::GetBoundKeyName(ActionID actionID)
 	{
+		// While the touch controls show, the button the action is on (as the controls pages show).
+		if (AreTouchControlsVisible())
+		{
+			int touchKeyID = GetBoundKeyID(BindingProfileID::Touch, actionID);
+			if (touchKeyID != KEY_UNASSIGNED)
+				return GetKeyName(touchKeyID);
+		}
+
 		int defaultKeyID = GetBoundKeyID(BindingProfileID::Default, actionID);
 		int userKeyID = GetBoundKeyID(BindingProfileID::Custom, actionID);
 		int boundKey = (userKeyID != KEY_UNASSIGNED) ? userKeyID : defaultKeyID;
