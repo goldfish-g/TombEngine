@@ -10,6 +10,7 @@ set(TEN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 set(TEN_SRC "${TEN_ROOT}/TombEngine")
 set(TEN_LIBS "${TEN_ROOT}/Libs")
 set(EXT "/ext" CACHE PATH "Libraries built for the browser by the Dockerfile")
+option(TEN_WEB_PROFILING "Keep function names in the WebAssembly, for profiling and readable stack traces" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -102,8 +103,12 @@ target_link_directories(TombEngine PRIVATE "${EXT}/lib")
 target_link_libraries(TombEngine PRIVATE SDL3 lua lz4)
 target_link_options(TombEngine PRIVATE
     ${TEN_WEB_FLAGS}
-    # Function names in stack traces while the port is brought up.
-    --profiling-funcs
+    # The link optimizes as the compile does: without it, Emscripten skips Binaryen's
+    # optimizations, keeps its runtime assertions and leaves the JavaScript as it is.
+    $<$<CONFIG:Release>:-O3>
+    # Function names stay out of the WebAssembly; TombEngine.js.symbols names the
+    # functions of a stack trace ($funcNNN) when needed.
+    $<IF:$<BOOL:${TEN_WEB_PROFILING}>,--profiling-funcs,--emit-symbol-map>
     -sMIN_WEBGL_VERSION=2
     -sMAX_WEBGL_VERSION=2
     -sALLOW_MEMORY_GROWTH
